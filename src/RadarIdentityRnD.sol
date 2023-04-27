@@ -6,6 +6,7 @@ import {IERC165} from "openzeppelin-contracts/contracts/utils/introspection/IERC
 import {IERC1155} from "openzeppelin-contracts/contracts/token/ERC1155/IERC1155.sol";
 import {IERC1155Receiver} from "openzeppelin-contracts/contracts/token/ERC1155/IERC1155Receiver.sol";
 import {IERC1155MetadataURI} from "openzeppelin-contracts/contracts/token/ERC1155/extensions/IERC1155MetadataURI.sol";
+import {IRadarIdentityRnD} from "./IRadarIdentityRnD.sol";
 import {AccessControl} from "openzeppelin-contracts/contracts/access/AccessControl.sol";
 import {Strings} from "openzeppelin-contracts/contracts/utils/Strings.sol";
 import {Context} from "openzeppelin-contracts/contracts/utils/Context.sol";
@@ -14,63 +15,11 @@ import {BitMaps} from "openzeppelin-contracts/contracts/utils/structs/BitMaps.so
 contract RadarIdentityRnD is
     IERC1155,
     IERC1155MetadataURI,
+    IRadarIdentityRnD,
     ERC165,
     AccessControl
 {
     using BitMaps for BitMaps.BitMap;
-
-    ////////////////////////////
-    ////////// Errors //////////
-    ////////////////////////////
-
-    error NotTokenOwner();
-    error NewTagTypeNotIncremental(uint64 tagType, uint256 maxTagType);
-    error TokenAlreadyMinted(
-        address user,
-        uint64 tagType,
-        uint256 priorBalance
-    );
-    error InsufficientFunds();
-    error SoulboundTokenNoSetApprovalForAll(address operator, bool approved);
-    error SoulboundTokenNoIsApprovedForAll(address account, address operator);
-    error SoulboundTokenNoSafeTransferFrom(
-        address from,
-        address to,
-        uint256 id,
-        uint256 amount,
-        bytes data
-    );
-    error SoulboundTokenNoSafeBatchTransferFrom(
-        address from,
-        address to,
-        uint256[] ids,
-        uint256[] amounts,
-        bytes data
-    );
-    error ERC1155ReceiverNotImplemented();
-    error ERC1155ReceiverRejectedTokens();
-
-    ////////////////////////////
-    ////////// Events //////////
-    ////////////////////////////
-
-    event TokenURIUpdated(
-        string indexed oldTokenURI,
-        string indexed newTokenURI
-    );
-    event ContractURIUpdated(
-        string indexed oldContractURI,
-        string indexed newContractURI
-    );
-    event MintPriceUpdated(
-        uint256 indexed oldMintPrice,
-        uint256 indexed newMintPrice
-    );
-    event MintFeePayout(
-        uint256 indexed amount,
-        address indexed to,
-        bool indexed success
-    );
 
     /////////////////////////////////////
     ////////// State Variables //////////
@@ -108,7 +57,7 @@ contract RadarIdentityRnD is
         pure
         returns (uint256 tokenId)
     {
-        tokenId = uint256(bytes32(abi.encodePacked(tagType, account)));
+        return uint256(bytes32(abi.encodePacked(tagType, account)));
     }
 
     function decodeTokenId(uint256 tokenId)
@@ -118,6 +67,7 @@ contract RadarIdentityRnD is
     {
         tagType = uint64(tokenId >> 192);
         account = address(uint160(uint256(((bytes32(tokenId) << 64) >> 64))));
+        return (tagType, account);
     }
 
     function _radarFeeForAmount(uint256 amount)
@@ -157,13 +107,18 @@ contract RadarIdentityRnD is
             super.supportsInterface(interfaceId);
     }
 
-    function setApprovalForAll(address operator, bool approved) external pure {
+    function setApprovalForAll(address operator, bool approved)
+        external
+        pure
+        override
+    {
         revert SoulboundTokenNoSetApprovalForAll(operator, approved);
     }
 
     function isApprovedForAll(address account, address operator)
         external
         pure
+        override
         returns (bool)
     {
         revert SoulboundTokenNoIsApprovedForAll(account, operator);
@@ -175,7 +130,7 @@ contract RadarIdentityRnD is
         uint256 id,
         uint256 amount,
         bytes calldata data
-    ) public pure {
+    ) public pure override {
         revert SoulboundTokenNoSafeTransferFrom(from, to, id, amount, data);
     }
 
@@ -185,7 +140,7 @@ contract RadarIdentityRnD is
         uint256[] calldata ids,
         uint256[] calldata amounts,
         bytes calldata data
-    ) public pure {
+    ) public pure override {
         revert SoulboundTokenNoSafeBatchTransferFrom(
             from,
             to,
@@ -198,6 +153,7 @@ contract RadarIdentityRnD is
     function balanceOf(address account, uint256 id)
         public
         view
+        override
         returns (uint256 balance)
     {
         (uint64 tagType, ) = decodeTokenId(id);
@@ -209,6 +165,7 @@ contract RadarIdentityRnD is
     function balanceOfBatch(address[] memory accounts, uint256[] memory ids)
         external
         view
+        override
         returns (uint256[] memory)
     {
         uint256 count = accounts.length;
@@ -283,7 +240,7 @@ contract RadarIdentityRnD is
         );
     }
 
-    function uri(uint256 id) external view returns (string memory) {
+    function uri(uint256 id) external view override returns (string memory) {
         return string.concat(_uri, Strings.toString(id));
     }
 
@@ -362,28 +319,31 @@ contract RadarIdentityRnD is
     /// @notice Setter method for updating the tokenURI
     /// @dev Only owner can update the tokenURI
     /// @param _newTokenURI The new tokenURI
-    function setTokenURI(string memory _newTokenURI) external {
+    function setTokenURI(string memory _newTokenURI) external override {
         _uri = _newTokenURI;
     }
 
     /// @notice Setter method for updating the contractURI
     /// @dev Only owner can update the contractURI
     /// @param _newContractURI The new contractURI
-    function setContractURI(string memory _newContractURI) external {
+    function setContractURI(string memory _newContractURI) external override {
         contractURI = _newContractURI;
     }
 
     /// @notice Setter method for updating the mintPrice
     /// @dev Only owner can update the mintPrice
     /// @param _newMintPrice The new mintPrice
-    function setMintPrice(uint256 _newMintPrice) external {
+    function setMintPrice(uint256 _newMintPrice) external override {
         mint_price = _newMintPrice;
     }
 
     /// @notice Setter method for updating the mintFeeAddress
     /// @dev Only owner can update the mintFeeAddress
     /// @param _newMintFeeAddress The new mintFeeAddress
-    function setMintFeeAddress(address payable _newMintFeeAddress) external {
+    function setMintFeeAddress(address payable _newMintFeeAddress)
+        external
+        override
+    {
         radarMintFeeAddress = _newMintFeeAddress;
     }
 }
