@@ -244,6 +244,10 @@ contract RadarIdentityRnD is
         return string.concat(_uri, Strings.toString(id));
     }
 
+    function getContractURI() external view returns (string memory) {
+        return contractURI;
+    }
+
     /**
      * @dev ERC1155 receiver check to ensure a "to" address can receive the ERC1155 token standard, used in single mint
      */

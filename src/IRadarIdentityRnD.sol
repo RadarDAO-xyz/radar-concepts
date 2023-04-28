@@ -74,6 +74,8 @@ interface IRadarIdentityRnD {
 
     function setContractURI(string memory _newContractURI) external;
 
+    function getContractURI() external view returns (string memory);
+
     function setMintPrice(uint256 _newMintPrice) external;
 
     function setMintFeeAddress(address payable _newMintFeeAddress) external;
