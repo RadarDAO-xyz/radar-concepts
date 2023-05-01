@@ -6,7 +6,6 @@ import {IERC165} from "openzeppelin-contracts/contracts/utils/introspection/IERC
 import {IERC1155} from "openzeppelin-contracts/contracts/token/ERC1155/IERC1155.sol";
 import {IERC1155Receiver} from "openzeppelin-contracts/contracts/token/ERC1155/IERC1155Receiver.sol";
 import {IERC1155MetadataURI} from "openzeppelin-contracts/contracts/token/ERC1155/extensions/IERC1155MetadataURI.sol";
-import {IRadarIdentityRnD} from "./IRadarIdentityRnD.sol";
 import {AccessControl} from "openzeppelin-contracts/contracts/access/AccessControl.sol";
 import {Strings} from "openzeppelin-contracts/contracts/utils/Strings.sol";
 import {Context} from "openzeppelin-contracts/contracts/utils/Context.sol";
@@ -15,11 +14,62 @@ import {BitMaps} from "openzeppelin-contracts/contracts/utils/structs/BitMaps.so
 contract RadarIdentityRnD is
     IERC1155,
     IERC1155MetadataURI,
-    IRadarIdentityRnD,
     ERC165,
     AccessControl
 {
     using BitMaps for BitMaps.BitMap;
+
+    ////////////////////////////
+    ////////// Errors //////////
+    ////////////////////////////
+
+    error NewTagTypeNotIncremental(uint64 tagType, uint256 maxTagType);
+    error TokenAlreadyMinted(
+        address user,
+        uint64 tagType,
+        uint256 priorBalance
+    );
+    error InsufficientFunds();
+    error SoulboundTokenNoSetApprovalForAll(address operator, bool approved);
+    error SoulboundTokenNoIsApprovedForAll(address account, address operator);
+    error SoulboundTokenNoSafeTransferFrom(
+        address from,
+        address to,
+        uint256 id,
+        uint256 amount,
+        bytes data
+    );
+    error SoulboundTokenNoSafeBatchTransferFrom(
+        address from,
+        address to,
+        uint256[] ids,
+        uint256[] amounts,
+        bytes data
+    );
+    error ERC1155ReceiverNotImplemented();
+    error ERC1155ReceiverRejectedTokens();
+
+    ////////////////////////////
+    ////////// Events //////////
+    ////////////////////////////
+
+    event TokenURIUpdated(
+        string indexed oldTokenURI,
+        string indexed newTokenURI
+    );
+    event ContractURIUpdated(
+        string indexed oldContractURI,
+        string indexed newContractURI
+    );
+    event MintPriceUpdated(
+        uint256 indexed oldMintPrice,
+        uint256 indexed newMintPrice
+    );
+    event MintFeePayout(
+        uint256 indexed amount,
+        address indexed to,
+        bool indexed success
+    );
 
     /////////////////////////////////////
     ////////// State Variables //////////
@@ -28,24 +78,24 @@ contract RadarIdentityRnD is
     uint256 public mint_price;
     address payable public radarMintFeeAddress;
     uint96 public maxTagType;
-    string private contractURI;
-    string private _uri;
+    string public contractURI;
+    string public baseTokenURI;
     mapping(address => BitMaps.BitMap) private _balances;
     address private immutable ZERO_ADDRESS = address(0);
     uint256 private immutable FUNDS_SEND_GAS_LIMIT = 210_000;
 
     constructor(
         string memory _baseTokenURI,
-        string memory _baseContractURI,
+        string memory _contractURI,
         address _owner,
         address payable _radarMintFeeAddress
     ) {
         mint_price = 0.000777 ether;
-        _baseTokenURI = _baseTokenURI;
-        _baseContractURI = _baseContractURI;
-        _radarMintFeeAddress = _radarMintFeeAddress;
+        baseTokenURI = _baseTokenURI;
+        contractURI = _contractURI;
+        radarMintFeeAddress = _radarMintFeeAddress;
 
-        grantRole(DEFAULT_ADMIN_ROLE, _owner);
+        _grantRole(DEFAULT_ADMIN_ROLE, _owner);
     }
 
     ////////////////////////////////
@@ -201,8 +251,8 @@ contract RadarIdentityRnD is
         payable
         returns (uint256 tokenId)
     {
-        _radarFeeForAmount(1);
         tokenId = _mint(to, tagType);
+        _payoutRadarFee(1);
         emit TransferSingle(_msgSender(), ZERO_ADDRESS, to, tokenId, 1);
         _doSafeTransferAcceptanceCheck(
             _msgSender(),
@@ -216,6 +266,7 @@ contract RadarIdentityRnD is
 
     function mintBatch(address to, uint64[] memory tagTypes)
         external
+        payable
         returns (uint256[] memory tokenIds)
     {
         uint256 mintCount = tagTypes.length;
@@ -241,7 +292,7 @@ contract RadarIdentityRnD is
     }
 
     function uri(uint256 id) external view override returns (string memory) {
-        return string.concat(_uri, Strings.toString(id));
+        return string.concat(baseTokenURI, Strings.toString(id));
     }
 
     function getContractURI() external view returns (string memory) {
@@ -323,31 +374,28 @@ contract RadarIdentityRnD is
     /// @notice Setter method for updating the tokenURI
     /// @dev Only owner can update the tokenURI
     /// @param _newTokenURI The new tokenURI
-    function setTokenURI(string memory _newTokenURI) external override {
-        _uri = _newTokenURI;
+    function setTokenURI(string memory _newTokenURI) external {
+        baseTokenURI = _newTokenURI;
     }
 
     /// @notice Setter method for updating the contractURI
     /// @dev Only owner can update the contractURI
     /// @param _newContractURI The new contractURI
-    function setContractURI(string memory _newContractURI) external override {
+    function setContractURI(string memory _newContractURI) external {
         contractURI = _newContractURI;
     }
 
     /// @notice Setter method for updating the mintPrice
     /// @dev Only owner can update the mintPrice
     /// @param _newMintPrice The new mintPrice
-    function setMintPrice(uint256 _newMintPrice) external override {
+    function setMintPrice(uint256 _newMintPrice) external {
         mint_price = _newMintPrice;
     }
 
     /// @notice Setter method for updating the mintFeeAddress
     /// @dev Only owner can update the mintFeeAddress
     /// @param _newMintFeeAddress The new mintFeeAddress
-    function setMintFeeAddress(address payable _newMintFeeAddress)
-        external
-        override
-    {
+    function setMintFeeAddress(address payable _newMintFeeAddress) external {
         radarMintFeeAddress = _newMintFeeAddress;
     }
 }
