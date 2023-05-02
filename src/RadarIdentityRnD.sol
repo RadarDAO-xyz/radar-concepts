@@ -23,10 +23,10 @@ contract RadarIdentityRnD is
     ////////// Errors //////////
     ////////////////////////////
 
-    error NewTagTypeNotIncremental(uint64 tagType, uint256 maxTagType);
+    error NewTagTypeNotIncremental(uint96 tagType, uint256 maxTagType);
     error TokenAlreadyMinted(
         address user,
-        uint64 tagType,
+        uint96 tagType,
         uint256 priorBalance
     );
     error InsufficientFunds();
@@ -102,7 +102,7 @@ contract RadarIdentityRnD is
     ////////// Functions ///////////
     ////////////////////////////////
 
-    function encodeTokenId(uint64 tagType, address account)
+    function encodeTokenId(uint96 tagType, address account)
         public
         pure
         returns (uint256 tokenId)
@@ -113,10 +113,10 @@ contract RadarIdentityRnD is
     function decodeTokenId(uint256 tokenId)
         public
         pure
-        returns (uint64 tagType, address account)
+        returns (uint96 tagType, address account)
     {
-        tagType = uint64(tokenId >> 192);
-        account = address(uint160(uint256(((bytes32(tokenId) << 64) >> 64))));
+        tagType = uint96(tokenId >> 160);
+        account = address(uint160(uint256(((bytes32(tokenId) << 96) >> 96))));
         return (tagType, account);
     }
 
@@ -206,7 +206,7 @@ contract RadarIdentityRnD is
         override
         returns (uint256 balance)
     {
-        (uint64 tagType, ) = decodeTokenId(id);
+        (uint96 tagType, ) = decodeTokenId(id);
         BitMaps.BitMap storage bitmap = _balances[account];
         bool owned = BitMaps.get(bitmap, tagType);
         return owned ? 1 : 0;
@@ -226,7 +226,7 @@ contract RadarIdentityRnD is
         return batchBalances;
     }
 
-    function _mint(address user, uint64 tagType)
+    function _mint(address user, uint96 tagType)
         internal
         returns (uint256 tokenId)
     {
@@ -239,14 +239,14 @@ contract RadarIdentityRnD is
         BitMaps.BitMap storage balances = _balances[user];
         BitMaps.set(balances, tagType);
 
-        uint64 nextPossibleNewTagType = uint64(maxTagType) + 1; // ensure new tagTypes are one greater, pack bitmaps sequentially
+        uint96 nextPossibleNewTagType = uint96(maxTagType) + 1; // ensure new tagTypes are one greater, pack bitmaps sequentially
         if (tagType > nextPossibleNewTagType)
             revert NewTagTypeNotIncremental(tagType, maxTagType);
         if (tagType == nextPossibleNewTagType) maxTagType = tagType;
         return tokenId;
     }
 
-    function mint(address to, uint64 tagType)
+    function mint(address to, uint96 tagType)
         external
         payable
         returns (uint256 tokenId)
@@ -264,7 +264,7 @@ contract RadarIdentityRnD is
         );
     }
 
-    function mintBatch(address to, uint64[] memory tagTypes)
+    function mintBatch(address to, uint96[] memory tagTypes)
         external
         payable
         returns (uint256[] memory tokenIds)

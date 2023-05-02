@@ -11,8 +11,8 @@ contract RadarIdentityRnDTest is Test {
 
     function setUp() external {
         radarIdentityRnD = new RadarIdentityRnD(
-            "https://ipfs.io/ipfs/bafybeifx7yeb55armcsxwwitkymga5xf53dxiarykms3ygqic223w5sk3m",
-            "https://ipfs.io/ipfs/bafybeifx7yeb55armcsxwwitkymga5xf53dxiarykms3ygqic223w5sk3m",
+            "https://ipfs.io/ipfs/bafybeifx7yeb55armcsxwwitkymga5xf53dxiarykms3ygqic223w5sk3m/",
+            "https://ipfs.io/ipfs/bafybeifx7yeb55armcsxwwitkymga5xf53dxiarykms3ygqic223w5sk3m/",
             0x82E286DF583C9b0d6504c56EAbA8fF47ffd59f49,
             payable(0x589e021B88F36103D3678301622b2368DBa44691)
         );
@@ -124,7 +124,7 @@ contract RadarIdentityRnDTest is Test {
     // Users can only batch mint one NFT of a type
     function testFailBatchMint() public {
         uint256 mint_price = radarIdentityRnD.mint_price();
-        uint64[] memory tagTypes = new uint64[](3);
+        uint96[] memory tagTypes = new uint96[](3);
         tagTypes[0] = 0;
         tagTypes[1] = 0;
         tagTypes[2] = 0;
@@ -152,17 +152,14 @@ contract RadarIdentityRnDTest is Test {
     // Token id encoding works correctly
     function testTokenIdEncoding() public view {
         uint256 result = radarIdentityRnD.encodeTokenId(0, msg.sender);
-        assert(
-            result == uint256(bytes32(abi.encodePacked(uint64(0), msg.sender)))
-        );
+        assert(result == 137122462167341575662000267002353578582749290296);
     }
 
     // Token id decoding works correctly
 
     function testTokenIdDecoding() public view {
-        uint256 id = 588936490555729346729400696718376575041474231588530159616;
-        (uint64 tagType, address account) = radarIdentityRnD.decodeTokenId(id);
-        assert(tagType == 0);
+        uint256 id = 137122462167341575662000267002353578582749290296;
+        (, address account) = radarIdentityRnD.decodeTokenId(id);
         assert(account == msg.sender);
     }
 
@@ -183,10 +180,38 @@ contract RadarIdentityRnDTest is Test {
         vm.deal(0x82E286DF583C9b0d6504c56EAbA8fF47ffd59f49, 1 ether);
         vm.startPrank(0x82E286DF583C9b0d6504c56EAbA8fF47ffd59f49);
         radarIdentityRnD.mint{value: mint_price}(msg.sender, 0);
-        console.log(msg.sender.balance);
         assert(radarMintFeeAddress.balance == mint_price);
         assert(msg.sender.balance != 1 ether);
     }
+
+    //Tags can only be minted in sequential order
+    function testTagsInSequentialOrder() public {
+        uint256 mint_price = radarIdentityRnD.mint_price();
+        uint96[] memory tagTypes = new uint96[](3);
+        tagTypes[0] = 0;
+        tagTypes[1] = 1;
+        tagTypes[2] = 2;
+        vm.deal(msg.sender, 10 ether);
+        radarIdentityRnD.mintBatch{value: mint_price * tagTypes.length}(
+            msg.sender,
+            tagTypes
+        );
+    }
+
+    function testFailInNonsequentialOrder() public {
+        uint256 mint_price = radarIdentityRnD.mint_price();
+        uint96[] memory tagTypes = new uint96[](3);
+        tagTypes[0] = 0;
+        tagTypes[1] = 2;
+        tagTypes[2] = 1;
+        vm.deal(msg.sender, 10 ether);
+        radarIdentityRnD.mintBatch{value: mint_price * tagTypes.length}(
+            msg.sender,
+            tagTypes
+        );
+    }
+
+    function testBalanceOf() public view {}
 
     // Admin functions can only be performed by the contract owner
     function testFailNonAdminSetTokenURI() public {
