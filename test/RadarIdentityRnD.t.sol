@@ -187,12 +187,21 @@ contract RadarIdentityRnDTest is Test {
         assert(radarMintFeeAddress.balance == mint_price);
         assert(msg.sender.balance != 1 ether);
     }
+
     // Admin functions can only be performed by the contract owner
-		function testAdmin() public {
-			vm.expectRevert(
-				
-			)
-		}
-    // Safetransfer acceptance check works correctly
-    // Batch safetransfer acceptance check works correctly
+    function testFailNonAdminSetTokenURI() public {
+        radarIdentityRnD.setTokenURI("https://testurl.xyz/");
+    }
+
+    function testFailNonAdminSetContractURI() public {
+        radarIdentityRnD.setContractURI("https://testurl.xyz/");
+    }
+
+    function testFailNonAdminSetMintPrice() public {
+        radarIdentityRnD.setContractURI("https://testurl.xyz/");
+    }
+
+    function testFailNonAdminSetMintFeeAddress() public {
+        radarIdentityRnD.setMintFeeAddress(payable(msg.sender));
+    }
 }

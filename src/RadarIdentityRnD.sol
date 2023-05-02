@@ -374,28 +374,40 @@ contract RadarIdentityRnD is
     /// @notice Setter method for updating the tokenURI
     /// @dev Only owner can update the tokenURI
     /// @param _newTokenURI The new tokenURI
-    function setTokenURI(string memory _newTokenURI) external {
+    function setTokenURI(string memory _newTokenURI)
+        external
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
         baseTokenURI = _newTokenURI;
     }
 
     /// @notice Setter method for updating the contractURI
     /// @dev Only owner can update the contractURI
     /// @param _newContractURI The new contractURI
-    function setContractURI(string memory _newContractURI) external {
+    function setContractURI(string memory _newContractURI)
+        external
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
         contractURI = _newContractURI;
     }
 
     /// @notice Setter method for updating the mintPrice
     /// @dev Only owner can update the mintPrice
     /// @param _newMintPrice The new mintPrice
-    function setMintPrice(uint256 _newMintPrice) external {
+    function setMintPrice(uint256 _newMintPrice)
+        external
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
         mint_price = _newMintPrice;
     }
 
     /// @notice Setter method for updating the mintFeeAddress
     /// @dev Only owner can update the mintFeeAddress
     /// @param _newMintFeeAddress The new mintFeeAddress
-    function setMintFeeAddress(address payable _newMintFeeAddress) external {
+    function setMintFeeAddress(address payable _newMintFeeAddress)
+        external
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
         radarMintFeeAddress = _newMintFeeAddress;
     }
 }
