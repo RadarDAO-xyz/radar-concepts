@@ -8,6 +8,7 @@ import {Strings} from "openzeppelin-contracts/contracts/utils/Strings.sol";
 
 contract RadarIdentityRnDTest is Test {
     RadarIdentityRnD radarIdentityRnD;
+    address recipientAddress;
 
     function setUp() external {
         radarIdentityRnD = new RadarIdentityRnD(
@@ -16,127 +17,136 @@ contract RadarIdentityRnDTest is Test {
             0x82E286DF583C9b0d6504c56EAbA8fF47ffd59f49,
             payable(0x589e021B88F36103D3678301622b2368DBa44691)
         );
+        recipientAddress = makeAddr("recipient");
     }
 
     // Contract initilizes correctly
-    function testOwner() public view {
-        assert(
+    function testInitializeOwner() public {
+        assertEq(
             radarIdentityRnD.hasRole(
                 0x00,
                 0x82E286DF583C9b0d6504c56EAbA8fF47ffd59f49
-            ) == true
+            ),
+            true
         );
     }
 
-    function testRadarAddress() public view {
-        assert(
-            radarIdentityRnD.radarMintFeeAddress() ==
-                payable(0x589e021B88F36103D3678301622b2368DBa44691)
+    function testInitializeRadarAddress() public {
+        assertEq(
+            radarIdentityRnD.radarMintFeeAddress(),
+            payable(0x589e021B88F36103D3678301622b2368DBa44691)
         );
     }
 
-    function testContractURI() public view {
+    function testInitializeContractURI() public {
         bool result = keccak256(
             abi.encodePacked(radarIdentityRnD.contractURI())
         ) ==
             keccak256(
                 abi.encodePacked(
-                    "https://ipfs.io/ipfs/bafybeifx7yeb55armcsxwwitkymga5xf53dxiarykms3ygqic223w5sk3m"
+                    "https://ipfs.io/ipfs/bafybeifx7yeb55armcsxwwitkymga5xf53dxiarykms3ygqic223w5sk3m/"
                 )
             );
-        assert(result == true);
+        assertEq(result, true);
     }
 
-    function testBaseTokenURI() public view {
+    function testInitializeBaseTokenURI() public {
         bool result = keccak256(
             abi.encodePacked(radarIdentityRnD.baseTokenURI())
         ) ==
             keccak256(
                 abi.encodePacked(
-                    "https://ipfs.io/ipfs/bafybeifx7yeb55armcsxwwitkymga5xf53dxiarykms3ygqic223w5sk3m"
+                    "https://ipfs.io/ipfs/bafybeifx7yeb55armcsxwwitkymga5xf53dxiarykms3ygqic223w5sk3m/"
                 )
             );
-        assert(result == true);
+        assertEq(result, true);
     }
 
     // NFT transfers and approvals revert
-    function testFailTransfer() public {
+    function testRevertSafeTransferFrom() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                RadarIdentityRnD.SoulboundTokenNoSafeTransferFrom.selector,
+                msg.sender,
+                recipientAddress,
+                0,
+                1,
+                ""
+            )
+        );
         uint256 mint_price = radarIdentityRnD.mint_price();
 
-        vm.deal(0x82E286DF583C9b0d6504c56EAbA8fF47ffd59f49, 1 ether);
-        vm.startPrank(0x82E286DF583C9b0d6504c56EAbA8fF47ffd59f49);
-        radarIdentityRnD.mint{value: mint_price}(
-            0x82E286DF583C9b0d6504c56EAbA8fF47ffd59f49,
-            1
-        );
+        radarIdentityRnD.mint{value: mint_price}(msg.sender, 1);
         radarIdentityRnD.safeTransferFrom(
-            0x82E286DF583C9b0d6504c56EAbA8fF47ffd59f49,
-            0x267D422b6A40DB310024aad2b77a5b296cB87128,
-            1,
+            msg.sender,
+            recipientAddress,
+            0,
             1,
             ""
         );
     }
 
-    function testSetApprovalForAll() public {
+    function testRevertSetApprovalForAll() public {
         vm.expectRevert(
             abi.encodeWithSelector(
                 RadarIdentityRnD.SoulboundTokenNoSetApprovalForAll.selector,
-                0x82E286DF583C9b0d6504c56EAbA8fF47ffd59f49,
+                recipientAddress,
                 true
             )
         );
-        radarIdentityRnD.setApprovalForAll(
-            0x82E286DF583C9b0d6504c56EAbA8fF47ffd59f49,
-            true
-        );
+        radarIdentityRnD.setApprovalForAll(recipientAddress, true);
     }
 
-    function testIsApprovedForAll() public {
+    function testRevertIsApprovedForAll() public {
         vm.expectRevert(
             abi.encodeWithSelector(
                 RadarIdentityRnD.SoulboundTokenNoIsApprovedForAll.selector,
                 msg.sender,
-                0x82E286DF583C9b0d6504c56EAbA8fF47ffd59f49
+                recipientAddress
             )
         );
-        radarIdentityRnD.isApprovedForAll(
-            msg.sender,
-            0x82E286DF583C9b0d6504c56EAbA8fF47ffd59f49
-        );
+        radarIdentityRnD.isApprovedForAll(msg.sender, recipientAddress);
     }
 
     // Users can only mint one NFT of a type
-    function testFailDoubleMint() public {
+    function testRevertDoubleMint() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                RadarIdentityRnD.TokenAlreadyMinted.selector,
+                recipientAddress,
+                0,
+                1
+            )
+        );
         uint256 mint_price = radarIdentityRnD.mint_price();
 
-        vm.deal(msg.sender, 1 ether);
-        radarIdentityRnD.mint{value: mint_price}(
-            0x82E286DF583C9b0d6504c56EAbA8fF47ffd59f49,
-            0
-        );
-        radarIdentityRnD.mint{value: mint_price}(
-            0x82E286DF583C9b0d6504c56EAbA8fF47ffd59f49,
-            0
-        );
+        radarIdentityRnD.mint{value: mint_price}(recipientAddress, 0);
+        radarIdentityRnD.mint{value: mint_price}(recipientAddress, 0);
     }
 
     // Users can only batch mint one NFT of a type
-    function testFailBatchMint() public {
+    function testRevertBatchMintSameType() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                RadarIdentityRnD.TokenAlreadyMinted.selector,
+                recipientAddress,
+                0,
+                1
+            )
+        );
         uint256 mint_price = radarIdentityRnD.mint_price();
         uint96[] memory tagTypes = new uint96[](3);
         tagTypes[0] = 0;
         tagTypes[1] = 0;
         tagTypes[2] = 0;
-        vm.deal(msg.sender, 3 ether);
-        radarIdentityRnD.mintBatch{value: mint_price}(
-            0x82E286DF583C9b0d6504c56EAbA8fF47ffd59f49,
+        radarIdentityRnD.mintBatch{value: mint_price * tagTypes.length}(
+            recipientAddress,
             tagTypes
         );
     }
 
     // Uri function returns the correct uri
-    function testURI() public view {
+    function testURI() public {
         bool result = keccak256(abi.encodePacked(radarIdentityRnD.uri(0))) ==
             keccak256(
                 abi.encodePacked(
@@ -146,29 +156,29 @@ contract RadarIdentityRnDTest is Test {
                     )
                 )
             );
-        assert(result == true);
+        assertEq(result, true);
     }
 
     // Token id encoding works correctly
-    function testTokenIdEncoding() public view {
+    function testTokenIdEncoding() public {
         uint256 result = radarIdentityRnD.encodeTokenId(0, msg.sender);
-        assert(result == 137122462167341575662000267002353578582749290296);
+        assertEq(result, 137122462167341575662000267002353578582749290296);
     }
 
     // Token id decoding works correctly
-
-    function testTokenIdDecoding() public view {
+    function testTokenIdDecoding() public {
         uint256 id = 137122462167341575662000267002353578582749290296;
-        (, address account) = radarIdentityRnD.decodeTokenId(id);
-        assert(account == msg.sender);
+        (uint256 tagType, address account) = radarIdentityRnD.decodeTokenId(id);
+
+        assertEq(account, msg.sender);
+        assertEq(tagType, 0);
     }
 
     // Minting is not possible without payment
     function testMintingWithoutPayment() public {
         vm.expectRevert(RadarIdentityRnD.InsufficientFunds.selector);
 
-        vm.prank(0x82E286DF583C9b0d6504c56EAbA8fF47ffd59f49);
-        radarIdentityRnD.mint(0x82E286DF583C9b0d6504c56EAbA8fF47ffd59f49, 1);
+        radarIdentityRnD.mint(recipientAddress, 1);
     }
 
     // Radar fee is calculated correctly
@@ -177,11 +187,8 @@ contract RadarIdentityRnDTest is Test {
         address radarMintFeeAddress = radarIdentityRnD.radarMintFeeAddress();
         uint256 mint_price = radarIdentityRnD.mint_price();
 
-        vm.deal(0x82E286DF583C9b0d6504c56EAbA8fF47ffd59f49, 1 ether);
-        vm.startPrank(0x82E286DF583C9b0d6504c56EAbA8fF47ffd59f49);
-        radarIdentityRnD.mint{value: mint_price}(msg.sender, 0);
-        assert(radarMintFeeAddress.balance == mint_price);
-        assert(msg.sender.balance != 1 ether);
+        radarIdentityRnD.mint{value: mint_price}(recipientAddress, 0);
+        assertEq(radarMintFeeAddress.balance, mint_price);
     }
 
     //Tags can only be minted in sequential order
@@ -191,7 +198,6 @@ contract RadarIdentityRnDTest is Test {
         tagTypes[0] = 0;
         tagTypes[1] = 1;
         tagTypes[2] = 2;
-        vm.deal(msg.sender, 10 ether);
         radarIdentityRnD.mintBatch{value: mint_price * tagTypes.length}(
             msg.sender,
             tagTypes
@@ -204,14 +210,26 @@ contract RadarIdentityRnDTest is Test {
         tagTypes[0] = 0;
         tagTypes[1] = 2;
         tagTypes[2] = 1;
-        vm.deal(msg.sender, 10 ether);
         radarIdentityRnD.mintBatch{value: mint_price * tagTypes.length}(
             msg.sender,
             tagTypes
         );
     }
 
-    function testBalanceOf() public view {}
+    function testBalanceOfNonMintedToken() public {
+        uint256 result = radarIdentityRnD.balanceOf(msg.sender, 0);
+        assertEq(result, 0);
+    }
+
+    function testBalanceOfMintedToken() public {
+        uint256 mint_price = radarIdentityRnD.mint_price();
+        radarIdentityRnD.mint{value: mint_price}(msg.sender, 0);
+        uint256 result = radarIdentityRnD.balanceOf(
+            msg.sender,
+            137122462167341575662000267002353578582749290296
+        );
+        assertEq(result, 1);
+    }
 
     // Admin functions can only be performed by the contract owner
     function testFailNonAdminSetTokenURI() public {

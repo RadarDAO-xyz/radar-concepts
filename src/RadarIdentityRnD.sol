@@ -239,7 +239,8 @@ contract RadarIdentityRnD is
         BitMaps.BitMap storage balances = _balances[user];
         BitMaps.set(balances, tagType);
 
-        uint96 nextPossibleNewTagType = uint96(maxTagType) + 1; // ensure new tagTypes are one greater, pack bitmaps sequentially
+        // ensure new tagTypes are one greater, pack bitmaps sequentially
+        uint96 nextPossibleNewTagType = uint96(maxTagType) + 1;
         if (tagType > nextPossibleNewTagType)
             revert NewTagTypeNotIncremental(tagType, maxTagType);
         if (tagType == nextPossibleNewTagType) maxTagType = tagType;
