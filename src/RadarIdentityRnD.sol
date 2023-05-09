@@ -54,15 +54,15 @@ contract RadarIdentityRnD is
     ////////////////////////////
 
     event TokenURIUpdated(
-        string indexed oldTokenURI,
+        string indexed previousTokenURI,
         string indexed newTokenURI
     );
     event ContractURIUpdated(
-        string indexed oldContractURI,
+        string indexed previousContractURI,
         string indexed newContractURI
     );
     event MintPriceUpdated(
-        uint256 indexed oldMintPrice,
+        uint256 indexed previousMintPrice,
         uint256 indexed newMintPrice
     );
     event MintFeePayout(
@@ -70,12 +70,16 @@ contract RadarIdentityRnD is
         address indexed to,
         bool indexed success
     );
+    event MintFeeAddressUpdated(
+        address indexed previousMintFeeAddress,
+        address indexed newMintFeeAddress
+    );
 
     /////////////////////////////////////
     ////////// State Variables //////////
     /////////////////////////////////////
 
-    uint256 public mint_price;
+    uint256 public mintPrice;
     address payable public radarMintFeeAddress;
     uint96 public maxTagType;
     string public contractURI;
@@ -90,7 +94,7 @@ contract RadarIdentityRnD is
         address _owner,
         address payable _radarMintFeeAddress
     ) {
-        mint_price = 0.000777 ether;
+        mintPrice = 0.000777 ether;
         baseTokenURI = _baseTokenURI;
         contractURI = _contractURI;
         radarMintFeeAddress = _radarMintFeeAddress;
@@ -125,7 +129,7 @@ contract RadarIdentityRnD is
         view
         returns (uint256)
     {
-        uint256 totalFee = mint_price * amount;
+        uint256 totalFee = mintPrice * amount;
         if (msg.value < totalFee) {
             revert InsufficientFunds();
         } else {
@@ -379,7 +383,9 @@ contract RadarIdentityRnD is
         external
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
+        string memory previousTokenURI = baseTokenURI;
         baseTokenURI = _newTokenURI;
+        emit TokenURIUpdated(previousTokenURI, _newTokenURI);
     }
 
     /// @notice Setter method for updating the contractURI
@@ -389,7 +395,9 @@ contract RadarIdentityRnD is
         external
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
+        string memory previousContractURI = contractURI;
         contractURI = _newContractURI;
+        emit ContractURIUpdated(previousContractURI, _newContractURI);
     }
 
     /// @notice Setter method for updating the mintPrice
@@ -399,7 +407,9 @@ contract RadarIdentityRnD is
         external
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
-        mint_price = _newMintPrice;
+        uint256 previousMintPrice = mintPrice;
+        mintPrice = _newMintPrice;
+        emit MintPriceUpdated(previousMintPrice, _newMintPrice);
     }
 
     /// @notice Setter method for updating the mintFeeAddress
@@ -409,6 +419,8 @@ contract RadarIdentityRnD is
         external
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
+        address previousMintFeeAddress = radarMintFeeAddress;
         radarMintFeeAddress = _newMintFeeAddress;
+        emit MintFeeAddressUpdated(previousMintFeeAddress, _newMintFeeAddress);
     }
 }
