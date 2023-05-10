@@ -65,15 +65,12 @@ contract RadarIdentityRnD is
         uint256 indexed previousMintPrice,
         uint256 indexed newMintPrice
     );
-    event MintFeePayout(
-        uint256 indexed amount,
-        address indexed to,
-        bool indexed success
-    );
     event MintFeeAddressUpdated(
         address indexed previousMintFeeAddress,
         address indexed newMintFeeAddress
     );
+
+    event FundsWithdrawn(uint256 indexed amount);
 
     /////////////////////////////////////
     ////////// State Variables //////////
@@ -86,7 +83,6 @@ contract RadarIdentityRnD is
     string public baseTokenURI;
     mapping(address => BitMaps.BitMap) private _balances;
     address private immutable ZERO_ADDRESS = address(0);
-    uint256 private immutable FUNDS_SEND_GAS_LIMIT = 210_000;
 
     constructor(
         string memory _baseTokenURI,
@@ -135,15 +131,6 @@ contract RadarIdentityRnD is
         } else {
             return totalFee;
         }
-    }
-
-    function _payoutRadarFee(uint256 amount) internal {
-        uint256 radarFee = _radarFeeForAmount(amount);
-        (bool success, ) = radarMintFeeAddress.call{
-            value: radarFee,
-            gas: FUNDS_SEND_GAS_LIMIT
-        }("");
-        emit MintFeePayout(radarFee, radarMintFeeAddress, success);
     }
 
     /**
@@ -234,6 +221,8 @@ contract RadarIdentityRnD is
         internal
         returns (uint256 tokenId)
     {
+        if (msg.value < mintPrice) revert InsufficientFunds();
+
         tokenId = encodeTokenId(tagType, user);
 
         uint256 priorBalance = balanceOf(user, tokenId);
@@ -257,7 +246,6 @@ contract RadarIdentityRnD is
         returns (uint256 tokenId)
     {
         tokenId = _mint(to, tagType);
-        _payoutRadarFee(1);
         emit TransferSingle(_msgSender(), ZERO_ADDRESS, to, tokenId, 1);
         _doSafeTransferAcceptanceCheck(
             _msgSender(),
@@ -422,5 +410,12 @@ contract RadarIdentityRnD is
         address previousMintFeeAddress = radarMintFeeAddress;
         radarMintFeeAddress = _newMintFeeAddress;
         emit MintFeeAddressUpdated(previousMintFeeAddress, _newMintFeeAddress);
+    }
+
+    function withdraw() external onlyRole(DEFAULT_ADMIN_ROLE) {
+        (bool success, ) = radarMintFeeAddress.call{
+            value: address(this).balance
+        }("");
+        emit FundsWithdrawn(address(this).balance);
     }
 }

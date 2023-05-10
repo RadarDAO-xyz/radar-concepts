@@ -339,15 +339,6 @@ contract RadarIdentityRnDTest is Test {
         radarIdentityRnDHarness.exposed_radarFeeForAmount(100);
     }
 
-    function testRadarFeePayout() public {
-        radarIdentityRnDHarness.exposed_payoutRadarFee{value: 1 ether}(5);
-    }
-
-    function testRadarFeePayoutInsufficentFunds() public {
-        vm.expectRevert(RadarIdentityRnD.InsufficientFunds.selector);
-        radarIdentityRnDHarness.exposed_payoutRadarFee(5);
-    }
-
     //Tags can only be minted in sequential order
     function testMintTagsInSequentialOrder() public {
         uint256 mintPrice = radarIdentityRnD.mintPrice();
@@ -441,6 +432,23 @@ contract RadarIdentityRnDTest is Test {
         radarIdentityRnD.setMintFeeAddress(payable(recipientAddress));
     }
 
+    function testAdminWithdrawFunds() public {
+        vm.prank(0x82E286DF583C9b0d6504c56EAbA8fF47ffd59f49);
+        uint256 mintPrice = radarIdentityRnD.mintPrice();
+        radarIdentityRnD.mint{value: mintPrice}(msg.sender, 0);
+        radarIdentityRnD.withdraw();
+        assertEq(
+            radarIdentityRnD.radarMintFeeAddress().balance,
+            0.000777 ether
+        );
+    }
+
+    function testFailNonAdminWithdrawFunds() public {
+        uint256 mintPrice = radarIdentityRnD.mintPrice();
+        radarIdentityRnD.mint{value: mintPrice}(msg.sender, 0);
+        radarIdentityRnD.withdraw();
+    }
+
     //Supports the proper interfaces
     function testSupportERC1155Interface() public {
         bytes4 erc1155InterfaceId = radarIdentityRnD.balanceOf.selector ^
@@ -500,16 +508,6 @@ contract RadarIdentityRnDTest is Test {
         radarIdentityRnD.setMintFeeAddress(
             payable(0x82E286DF583C9b0d6504c56EAbA8fF47ffd59f49)
         );
-    }
-
-    function testMintFeePayoutEventEmitted() public {
-        vm.expectEmit(true, true, true, false);
-        emit MintFeePayout(
-            0.000777 ether,
-            radarIdentityRnD.radarMintFeeAddress(),
-            true
-        );
-        radarIdentityRnDHarness.exposed_payoutRadarFee{value: 1 ether}(1);
     }
 
     function testTransferSingleEventEmitted() public {

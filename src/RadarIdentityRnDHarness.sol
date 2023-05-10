@@ -26,10 +26,6 @@ contract RadarIdentityRnDHarness is RadarIdentityRnD {
         return _radarFeeForAmount(amount);
     }
 
-    function exposed_payoutRadarFee(uint256 amount) external payable {
-        return _payoutRadarFee(amount);
-    }
-
     function exposed_msgSender() external view returns (address) {
         return _msgSender();
     }
