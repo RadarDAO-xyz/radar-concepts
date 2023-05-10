@@ -10,6 +10,7 @@ import {AccessControl} from "openzeppelin-contracts/contracts/access/AccessContr
 import {Strings} from "openzeppelin-contracts/contracts/utils/Strings.sol";
 import {Context} from "openzeppelin-contracts/contracts/utils/Context.sol";
 import {BitMaps} from "openzeppelin-contracts/contracts/utils/structs/BitMaps.sol";
+import {Base64} from "openzeppelin-contracts/contracts/utils/Base64.sol";
 
 contract RadarConcepts is IERC1155, IERC1155MetadataURI, ERC165, AccessControl {
     using BitMaps for BitMaps.BitMap;
@@ -282,8 +283,29 @@ contract RadarConcepts is IERC1155, IERC1155MetadataURI, ERC165, AccessControl {
         );
     }
 
-    function uri(uint256 id) external view override returns (string memory) {
-        return string.concat(baseTokenURI, Strings.toString(id));
+    function uri(uint256 id) external pure override returns (string memory) {
+        (uint96 tagType, ) = decodeTokenId(id);
+        string[2] memory parts;
+        parts[
+            0
+        ] = '<svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMinYMin meet" viewBox="0 0 350 350"><style>.base { fill: white; font-family: serif; font-size: 14px; }</style><rect width="100%" height="100%" fill="black" /><text x="10" y="20" class="base">';
+        parts[1] = "<text></text></svg>";
+        string memory output = string(abi.encodePacked(parts[0], parts[1]));
+        string memory json = Base64.encode(
+            bytes(
+                string(
+                    abi.encodePacked(
+                        '{"name": "Concept #',
+                        tagType,
+                        '", "description": "A RADAR concept is a...", "image": "data:image/svg+xml;base64,',
+                        Base64.encode(bytes(output)),
+                        '"}'
+                    )
+                )
+            )
+        );
+        output = string(abi.encodePacked("data:application/json;base64", json));
+        return output;
     }
 
     function getContractURI() external view returns (string memory) {
