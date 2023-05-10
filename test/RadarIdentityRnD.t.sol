@@ -369,6 +369,11 @@ contract RadarIdentityRnDTest is Test {
         assertEq(result, 0);
     }
 
+    function testCorrectTotalSupplyOfNonMintedToken() public {
+        uint256 result = radarIdentityRnD.totalSupply(0);
+        assertEq(result, 0);
+    }
+
     function testCorrectBalanceOfMintedToken() public {
         uint256 mintPrice = radarIdentityRnD.mintPrice();
         radarIdentityRnD.mint{value: mintPrice}(msg.sender, 0);
@@ -376,6 +381,13 @@ contract RadarIdentityRnDTest is Test {
             msg.sender,
             137122462167341575662000267002353578582749290296
         );
+        assertEq(result, 1);
+    }
+
+    function testCorrectTotalSupplyOfMintedToken() public {
+        uint256 mintPrice = radarIdentityRnD.mintPrice();
+        radarIdentityRnD.mint{value: mintPrice}(msg.sender, 0);
+        uint256 result = radarIdentityRnD.totalSupply(0);
         assertEq(result, 1);
     }
 
@@ -393,6 +405,22 @@ contract RadarIdentityRnDTest is Test {
         assertEq(radarIdentityRnD.balanceOf(msg.sender, 0), 1);
         assertEq(radarIdentityRnD.balanceOf(msg.sender, 1), 1);
         assertEq(radarIdentityRnD.balanceOf(msg.sender, 2), 1);
+    }
+
+    function testCorrectTotalSupplyofBatchMintedTokens() public {
+        uint256 mintPrice = radarIdentityRnD.mintPrice();
+        uint96[] memory tagTypes = new uint96[](3);
+        tagTypes[0] = 0;
+        tagTypes[1] = 1;
+        tagTypes[2] = 2;
+        radarIdentityRnD.mintBatch{value: mintPrice * tagTypes.length}(
+            msg.sender,
+            tagTypes
+        );
+
+        assertEq(radarIdentityRnD.totalSupply(0), 1);
+        assertEq(radarIdentityRnD.totalSupply(1), 1);
+        assertEq(radarIdentityRnD.totalSupply(2), 1);
     }
 
     // Admin functions can only be performed by the contract owner
@@ -433,10 +461,13 @@ contract RadarIdentityRnDTest is Test {
     }
 
     function testAdminWithdrawFunds() public {
-        vm.prank(0x82E286DF583C9b0d6504c56EAbA8fF47ffd59f49);
         uint256 mintPrice = radarIdentityRnD.mintPrice();
+        vm.deal(0x82E286DF583C9b0d6504c56EAbA8fF47ffd59f49, 1 ether);
+        vm.startPrank(0x82E286DF583C9b0d6504c56EAbA8fF47ffd59f49);
         radarIdentityRnD.mint{value: mintPrice}(msg.sender, 0);
         radarIdentityRnD.withdraw();
+        vm.stopPrank();
+        assertEq(address(radarIdentityRnD).balance, 0);
         assertEq(
             radarIdentityRnD.radarMintFeeAddress().balance,
             0.000777 ether

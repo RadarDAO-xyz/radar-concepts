@@ -82,6 +82,7 @@ contract RadarIdentityRnD is
     string public contractURI;
     string public baseTokenURI;
     mapping(address => BitMaps.BitMap) private _balances;
+    mapping(uint96 => uint256) public totalSupply;
     address private immutable ZERO_ADDRESS = address(0);
 
     constructor(
@@ -237,6 +238,8 @@ contract RadarIdentityRnD is
         if (tagType > nextPossibleNewTagType)
             revert NewTagTypeNotIncremental(tagType, maxTagType);
         if (tagType == nextPossibleNewTagType) maxTagType = tagType;
+
+        totalSupply[tagType]++;
         return tokenId;
     }
 
