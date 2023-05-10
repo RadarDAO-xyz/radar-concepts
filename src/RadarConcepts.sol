@@ -11,12 +11,7 @@ import {Strings} from "openzeppelin-contracts/contracts/utils/Strings.sol";
 import {Context} from "openzeppelin-contracts/contracts/utils/Context.sol";
 import {BitMaps} from "openzeppelin-contracts/contracts/utils/structs/BitMaps.sol";
 
-contract RadarIdentityRnD is
-    IERC1155,
-    IERC1155MetadataURI,
-    ERC165,
-    AccessControl
-{
+contract RadarConcepts is IERC1155, IERC1155MetadataURI, ERC165, AccessControl {
     using BitMaps for BitMaps.BitMap;
 
     ////////////////////////////
