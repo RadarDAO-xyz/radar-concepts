@@ -104,26 +104,26 @@ contract RadarConceptsTest is Test {
 
     // NFT transfers and approvals revert
     function testRevertSafeTransferFrom() public {
-        uint256 tagId = 0;
+        uint256 tagType = 0;
         uint256 amount = 1;
+
+        uint256 mintPrice = radarConcepts.mintPrice();
+        radarConcepts.mint{value: mintPrice}(msg.sender, 0);
 
         vm.expectRevert(
             abi.encodeWithSelector(
                 RadarConcepts.SoulboundTokenNoSafeTransferFrom.selector,
                 msg.sender,
                 recipientAddress,
-                tagId,
+                tagType,
                 amount,
                 ""
             )
         );
-        uint256 mintPrice = radarConcepts.mintPrice();
-
-        radarConcepts.mint{value: mintPrice}(msg.sender, 0);
         radarConcepts.safeTransferFrom(
             msg.sender,
             recipientAddress,
-            tagId,
+            tagType,
             amount,
             ""
         );
@@ -182,36 +182,37 @@ contract RadarConceptsTest is Test {
     }
 
     // Users can only mint one NFT of a type
-    function testFailDoubleMint() public {
-        // vm.expectRevert(
-        //     abi.encodeWithSelector(
-        //         RadarConcepts.TokenAlreadyMinted.selector,
-        //         recipientAddress,
-        //         0,
-        //         1
-        //     )
-        // );
+    function testRevertDoubleMint() public {
         uint256 mintPrice = radarConcepts.mintPrice();
 
         radarConcepts.mint{value: mintPrice}(recipientAddress, 0);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                RadarConcepts.TokenAlreadyMinted.selector,
+                recipientAddress,
+                0,
+                1
+            )
+        );
         radarConcepts.mint{value: mintPrice}(recipientAddress, 0);
     }
 
     // Users can only batch mint one NFT of a type
-    function testFailBatchMintSameType() public {
-        // vm.expectRevert(
-        //     abi.encodeWithSelector(
-        //         RadarConcepts.TokenAlreadyMinted.selector,
-        //         recipientAddress,
-        //         0,
-        //         1
-        //     )
-        // );
+    function testRevertBatchMintSameType() public {
         uint256 mintPrice = radarConcepts.mintPrice();
         uint96[] memory tagTypes = new uint96[](3);
         tagTypes[0] = 0;
         tagTypes[1] = 0;
         tagTypes[2] = 0;
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                RadarConcepts.TokenAlreadyMinted.selector,
+                recipientAddress,
+                0,
+                1
+            )
+        );
         radarConcepts.mintBatch{value: mintPrice * tagTypes.length}(
             recipientAddress,
             tagTypes
@@ -248,49 +249,44 @@ contract RadarConceptsTest is Test {
         );
     }
 
-    function testFailMintToERC1155ReceiverWrongFunctionSelectors() public {
-        // vm.expectRevert(
-        //     RadarConcepts.ERC1155ReceiverRejectedTokens.selector
-        // );
+    function testRevertMintToERC1155ReceiverWrongFunctionSelectors() public {
         uint256 mintPrice = radarConcepts.mintPrice();
+        vm.expectRevert(RadarConcepts.ERC1155ReceiverRejectedTokens.selector);
         radarConcepts.mint{value: mintPrice}(
             address(erc1155ReceiverWrongFunctionSelectors),
             0
         );
     }
 
-    function testFailBatchMintToERC1155WrongFunctionSelectors() public {
-        // vm.expectRevert(
-        //     RadarConcepts.ERC1155ReceiverRejectedTokens.selector
-        // );
+    function testRevertBatchMintToERC1155WrongFunctionSelectors() public {
         uint256 mintPrice = radarConcepts.mintPrice();
         uint96[] memory tagTypes = new uint96[](3);
         tagTypes[0] = 0;
         tagTypes[1] = 1;
         tagTypes[2] = 2;
+
+        vm.expectRevert(RadarConcepts.ERC1155ReceiverRejectedTokens.selector);
         radarConcepts.mintBatch{value: mintPrice * tagTypes.length}(
             address(erc1155ReceiverWrongFunctionSelectors),
             tagTypes
         );
     }
 
-    function testFailMintToERC1155NonReceiver() public {
-        // vm.expectRevert(
-        //     RadarConcepts.ERC1155ReceiverNotImplemented.selector
-        // );
+    function testRevertMintToERC1155NonReceiver() public {
         uint256 mintPrice = radarConcepts.mintPrice();
+
+        vm.expectRevert(RadarConcepts.ERC1155ReceiverNotImplemented.selector);
         radarConcepts.mint{value: mintPrice}(address(radarConceptsHarness), 0);
     }
 
-    function testFailBatchMintToNonERC1155Receiver() public {
-        // vm.expectRevert(
-        //     RadarConcepts.ERC1155ReceiverNotImplemented.selector
-        // );
+    function testRevertBatchMintToNonERC1155Receiver() public {
         uint256 mintPrice = radarConcepts.mintPrice();
         uint96[] memory tagTypes = new uint96[](3);
         tagTypes[0] = 0;
         tagTypes[1] = 1;
         tagTypes[2] = 2;
+
+        vm.expectRevert(RadarConcepts.ERC1155ReceiverNotImplemented.selector);
         radarConcepts.mintBatch{value: mintPrice * tagTypes.length}(
             address(radarConceptsHarness),
             tagTypes
@@ -362,12 +358,20 @@ contract RadarConceptsTest is Test {
         );
     }
 
-    function testFailMintTagsInNonsequentialOrder() public {
+    function testRevertMintTagsInNonsequentialOrder() public {
         uint256 mintPrice = radarConcepts.mintPrice();
         uint96[] memory tagTypes = new uint96[](3);
         tagTypes[0] = 0;
         tagTypes[1] = 2;
         tagTypes[2] = 1;
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                RadarConcepts.NewTagTypeNotIncremental.selector,
+                2,
+                0
+            )
+        );
         radarConcepts.mintBatch{value: mintPrice * tagTypes.length}(
             msg.sender,
             tagTypes
@@ -434,7 +438,17 @@ contract RadarConceptsTest is Test {
     }
 
     // Admin functions can only be performed by the contract owner
-    function testFailNonAdminSetTokenURI() public {
+    function testRevertNonAdminSetTokenURI() public {
+        bytes memory message = bytes(
+            abi.encodePacked(
+                "AccessControl: account ",
+                Strings.toHexString(radarConceptsHarness.exposed_msgSender()),
+                " is missing role ",
+                Strings.toHexString(uint256(0x00), 32)
+            )
+        );
+
+        vm.expectRevert(message);
         radarConcepts.setTokenURI("www.testtokenuri2.xyz/");
     }
 
@@ -443,7 +457,16 @@ contract RadarConceptsTest is Test {
         radarConcepts.setTokenURI("www.testtokenuri2.xyz/");
     }
 
-    function testFailNonAdminSetContractURI() public {
+    function testRevertNonAdminSetContractURI() public {
+        bytes memory message = bytes(
+            abi.encodePacked(
+                "AccessControl: account ",
+                Strings.toHexString(radarConceptsHarness.exposed_msgSender()),
+                " is missing role ",
+                Strings.toHexString(uint256(0x00), 32)
+            )
+        );
+        vm.expectRevert(message);
         radarConcepts.setContractURI("www.testcontracturi2.xyz/");
     }
 
@@ -452,7 +475,16 @@ contract RadarConceptsTest is Test {
         radarConcepts.setContractURI("https://testcontracturi2.xyz/");
     }
 
-    function testFailNonAdminSetMintPrice() public {
+    function testRevertNonAdminSetMintPrice() public {
+        bytes memory message = bytes(
+            abi.encodePacked(
+                "AccessControl: account ",
+                Strings.toHexString(radarConceptsHarness.exposed_msgSender()),
+                " is missing role ",
+                Strings.toHexString(uint256(0x00), 32)
+            )
+        );
+        vm.expectRevert(message);
         radarConcepts.setMintPrice(1 ether);
     }
 
@@ -461,7 +493,16 @@ contract RadarConceptsTest is Test {
         radarConcepts.setMintPrice(1 ether);
     }
 
-    function testFailNonAdminSetMintFeeAddress() public {
+    function testRevertNonAdminSetMintFeeAddress() public {
+        bytes memory message = bytes(
+            abi.encodePacked(
+                "AccessControl: account ",
+                Strings.toHexString(radarConceptsHarness.exposed_msgSender()),
+                " is missing role ",
+                Strings.toHexString(uint256(0x00), 32)
+            )
+        );
+        vm.expectRevert(message);
         radarConcepts.setMintFeeAddress(payable(msg.sender));
     }
 
@@ -481,9 +522,18 @@ contract RadarConceptsTest is Test {
         assertEq(radarConcepts.radarMintFeeAddress().balance, 0.000777 ether);
     }
 
-    function testFailNonAdminWithdrawFunds() public {
+    function testRevertNonAdminWithdrawFunds() public {
         uint256 mintPrice = radarConcepts.mintPrice();
         radarConcepts.mint{value: mintPrice}(msg.sender, 0);
+        bytes memory message = bytes(
+            abi.encodePacked(
+                "AccessControl: account ",
+                Strings.toHexString(radarConceptsHarness.exposed_msgSender()),
+                " is missing role ",
+                Strings.toHexString(uint256(0x00), 32)
+            )
+        );
+        vm.expectRevert(message);
         radarConcepts.withdraw();
     }
 
