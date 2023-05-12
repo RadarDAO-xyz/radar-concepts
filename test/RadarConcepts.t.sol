@@ -16,13 +16,6 @@ contract RadarConceptsTest is Test {
         uint256 id,
         uint256 value
     );
-    event TransferBatch(
-        address indexed operator,
-        address indexed from,
-        address indexed to,
-        uint256[] ids,
-        uint256[] values
-    );
     event TokenURIUpdated(
         string indexed previousTokenURI,
         string indexed newTokenURI
@@ -111,14 +104,7 @@ contract RadarConceptsTest is Test {
         radarConcepts.mint{value: mintPrice}(msg.sender, 0);
 
         vm.expectRevert(
-            abi.encodeWithSelector(
-                RadarConcepts.SoulboundTokenNoSafeTransferFrom.selector,
-                msg.sender,
-                recipientAddress,
-                tagType,
-                amount,
-                ""
-            )
+            RadarConcepts.SoulboundTokenNoSafeTransferFrom.selector
         );
         radarConcepts.safeTransferFrom(
             msg.sender,
@@ -129,54 +115,16 @@ contract RadarConceptsTest is Test {
         );
     }
 
-    function testRevertSafeBatchTransferFrom() public {
-        uint256[] memory tagTypes = new uint256[](3);
-        uint256[] memory amounts = new uint256[](3);
-        tagTypes[0] = 0;
-        tagTypes[1] = 1;
-        tagTypes[2] = 2;
-
-        amounts[0] = 0;
-        amounts[1] = 1;
-        amounts[2] = 2;
-
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                RadarConcepts.SoulboundTokenNoSafeBatchTransferFrom.selector,
-                msg.sender,
-                recipientAddress,
-                tagTypes,
-                amounts,
-                ""
-            )
-        );
-        radarConcepts.safeBatchTransferFrom(
-            msg.sender,
-            recipientAddress,
-            tagTypes,
-            amounts,
-            ""
-        );
-    }
-
     function testRevertSetApprovalForAll() public {
         vm.expectRevert(
-            abi.encodeWithSelector(
-                RadarConcepts.SoulboundTokenNoSetApprovalForAll.selector,
-                recipientAddress,
-                true
-            )
+            RadarConcepts.SoulboundTokenNoSetApprovalForAll.selector
         );
         radarConcepts.setApprovalForAll(recipientAddress, true);
     }
 
     function testRevertIsApprovedForAll() public {
         vm.expectRevert(
-            abi.encodeWithSelector(
-                RadarConcepts.SoulboundTokenNoIsApprovedForAll.selector,
-                msg.sender,
-                recipientAddress
-            )
+            RadarConcepts.SoulboundTokenNoIsApprovedForAll.selector
         );
         radarConcepts.isApprovedForAll(msg.sender, recipientAddress);
     }
@@ -197,56 +145,16 @@ contract RadarConceptsTest is Test {
         radarConcepts.mint{value: mintPrice}(recipientAddress, 0);
     }
 
-    // Users can only batch mint one NFT of a type
-    function testRevertBatchMintSameType() public {
-        uint256 mintPrice = radarConcepts.mintPrice();
-        uint96[] memory tagTypes = new uint96[](3);
-        tagTypes[0] = 0;
-        tagTypes[1] = 0;
-        tagTypes[2] = 0;
-
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                RadarConcepts.TokenAlreadyMinted.selector,
-                recipientAddress,
-                0,
-                1
-            )
-        );
-        radarConcepts.mintBatch{value: mintPrice * tagTypes.length}(
-            recipientAddress,
-            tagTypes
-        );
-    }
-
     function testMaxTagTypeValue() public {
         uint256 mintPrice = radarConcepts.mintPrice();
-        uint96[] memory tagTypes = new uint96[](3);
-        tagTypes[0] = 0;
-        tagTypes[1] = 1;
-        tagTypes[2] = 2;
-        radarConcepts.mintBatch{value: mintPrice * tagTypes.length}(
-            recipientAddress,
-            tagTypes
-        );
-        assertEq(radarConcepts.maxTagType(), 2);
+        radarConcepts.mint{value: 1 ether}(recipientAddress, 0);
+        radarConcepts.mint{value: 1 ether}(recipientAddress, 1);
+        assertEq(radarConcepts.maxTagType(), 1);
     }
 
     function testMintToERC1155Receiver() public {
         uint256 mintPrice = radarConcepts.mintPrice();
         radarConcepts.mint{value: mintPrice}(address(erc1155Receiver), 0);
-    }
-
-    function testBatchMintToERC1155Receiver() public {
-        uint256 mintPrice = radarConcepts.mintPrice();
-        uint96[] memory tagTypes = new uint96[](3);
-        tagTypes[0] = 0;
-        tagTypes[1] = 1;
-        tagTypes[2] = 2;
-        radarConcepts.mintBatch{value: mintPrice * tagTypes.length}(
-            address(erc1155Receiver),
-            tagTypes
-        );
     }
 
     function testRevertMintToERC1155ReceiverWrongFunctionSelectors() public {
@@ -258,39 +166,11 @@ contract RadarConceptsTest is Test {
         );
     }
 
-    function testRevertBatchMintToERC1155WrongFunctionSelectors() public {
-        uint256 mintPrice = radarConcepts.mintPrice();
-        uint96[] memory tagTypes = new uint96[](3);
-        tagTypes[0] = 0;
-        tagTypes[1] = 1;
-        tagTypes[2] = 2;
-
-        vm.expectRevert(RadarConcepts.ERC1155ReceiverRejectedTokens.selector);
-        radarConcepts.mintBatch{value: mintPrice * tagTypes.length}(
-            address(erc1155ReceiverWrongFunctionSelectors),
-            tagTypes
-        );
-    }
-
     function testRevertMintToERC1155NonReceiver() public {
         uint256 mintPrice = radarConcepts.mintPrice();
 
         vm.expectRevert(RadarConcepts.ERC1155ReceiverNotImplemented.selector);
         radarConcepts.mint{value: mintPrice}(address(radarConceptsHarness), 0);
-    }
-
-    function testRevertBatchMintToNonERC1155Receiver() public {
-        uint256 mintPrice = radarConcepts.mintPrice();
-        uint96[] memory tagTypes = new uint96[](3);
-        tagTypes[0] = 0;
-        tagTypes[1] = 1;
-        tagTypes[2] = 2;
-
-        vm.expectRevert(RadarConcepts.ERC1155ReceiverNotImplemented.selector);
-        radarConcepts.mintBatch{value: mintPrice * tagTypes.length}(
-            address(radarConceptsHarness),
-            tagTypes
-        );
     }
 
     // Uri function returns the correct uri
@@ -329,6 +209,25 @@ contract RadarConceptsTest is Test {
         radarConcepts.mint(recipientAddress, 1);
     }
 
+    //Token is burned correctly
+    function testBurnTokenOwner() public {
+        uint256 mintPrice = radarConcepts.mintPrice();
+        radarConcepts.mint{value: mintPrice}(recipientAddress, 0);
+        uint256 tokenId = radarConcepts.encodeTokenId(0, recipientAddress);
+        vm.prank(recipientAddress);
+        radarConcepts.burn(tokenId);
+    }
+
+    //Token is unable to be burned by non token owner
+
+    function testBurnNonTokenOwner() public {
+        uint256 mintPrice = radarConcepts.mintPrice();
+        radarConcepts.mint{value: mintPrice}(recipientAddress, 0);
+        uint256 tokenId = radarConcepts.encodeTokenId(0, recipientAddress);
+        vm.expectRevert(RadarConcepts.NotTokenOwner.selector);
+        radarConcepts.burn(tokenId);
+    }
+
     // Radar fee is calculated correctly
     // Radar fee is paid out to the correct address when minting
     function testRadarFee() public {
@@ -348,22 +247,14 @@ contract RadarConceptsTest is Test {
     //Tags can only be minted in sequential order
     function testMintTagsInSequentialOrder() public {
         uint256 mintPrice = radarConcepts.mintPrice();
-        uint96[] memory tagTypes = new uint96[](3);
-        tagTypes[0] = 0;
-        tagTypes[1] = 1;
-        tagTypes[2] = 2;
-        radarConcepts.mintBatch{value: mintPrice * tagTypes.length}(
-            msg.sender,
-            tagTypes
-        );
+        radarConcepts.mint{value: mintPrice}(msg.sender, 0);
+        radarConcepts.mint{value: mintPrice}(msg.sender, 1);
+        radarConcepts.mint{value: mintPrice}(msg.sender, 2);
     }
 
     function testRevertMintTagsInNonsequentialOrder() public {
         uint256 mintPrice = radarConcepts.mintPrice();
-        uint96[] memory tagTypes = new uint96[](3);
-        tagTypes[0] = 0;
-        tagTypes[1] = 2;
-        tagTypes[2] = 1;
+        radarConcepts.mint{value: mintPrice}(msg.sender, 0);
 
         vm.expectRevert(
             abi.encodeWithSelector(
@@ -372,10 +263,7 @@ contract RadarConceptsTest is Test {
                 0
             )
         );
-        radarConcepts.mintBatch{value: mintPrice * tagTypes.length}(
-            msg.sender,
-            tagTypes
-        );
+        radarConcepts.mint{value: mintPrice}(msg.sender, 2);
     }
 
     function testCorrectBalanceOfNonMintedToken() public {
@@ -403,38 +291,6 @@ contract RadarConceptsTest is Test {
         radarConcepts.mint{value: mintPrice}(msg.sender, 0);
         uint256 result = radarConcepts.totalSupply(0);
         assertEq(result, 1);
-    }
-
-    function testCorrectBalancesofBatchMintedTokens() public {
-        uint256 mintPrice = radarConcepts.mintPrice();
-        uint96[] memory tagTypes = new uint96[](3);
-        tagTypes[0] = 0;
-        tagTypes[1] = 1;
-        tagTypes[2] = 2;
-        radarConcepts.mintBatch{value: mintPrice * tagTypes.length}(
-            msg.sender,
-            tagTypes
-        );
-
-        assertEq(radarConcepts.balanceOf(msg.sender, 0), 1);
-        assertEq(radarConcepts.balanceOf(msg.sender, 1), 1);
-        assertEq(radarConcepts.balanceOf(msg.sender, 2), 1);
-    }
-
-    function testCorrectTotalSupplyofBatchMintedTokens() public {
-        uint256 mintPrice = radarConcepts.mintPrice();
-        uint96[] memory tagTypes = new uint96[](3);
-        tagTypes[0] = 0;
-        tagTypes[1] = 1;
-        tagTypes[2] = 2;
-        radarConcepts.mintBatch{value: mintPrice * tagTypes.length}(
-            msg.sender,
-            tagTypes
-        );
-
-        assertEq(radarConcepts.totalSupply(0), 1);
-        assertEq(radarConcepts.totalSupply(1), 1);
-        assertEq(radarConcepts.totalSupply(2), 1);
     }
 
     // Admin functions can only be performed by the contract owner
@@ -609,35 +465,5 @@ contract RadarConceptsTest is Test {
         );
 
         radarConcepts.mint{value: 1 ether}(msg.sender, 0);
-    }
-
-    function testTransferBatchEventEmitted() public {
-        vm.expectEmit(true, true, true, true);
-        uint96[] memory tagTypes = new uint96[](3);
-        uint256[] memory tokenIds = new uint256[](3);
-        uint256[] memory amounts = new uint256[](3);
-        tagTypes[0] = 0;
-        tagTypes[1] = 1;
-        tagTypes[2] = 2;
-        tokenIds[0] = radarConcepts.encodeTokenId(0, msg.sender);
-        tokenIds[1] = radarConcepts.encodeTokenId(1, msg.sender);
-        tokenIds[2] = radarConcepts.encodeTokenId(2, msg.sender);
-        amounts[0] = 1;
-        amounts[1] = 1;
-        amounts[2] = 1;
-
-        emit TransferBatch(
-            0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496,
-            address(0),
-            msg.sender,
-            tokenIds,
-            amounts
-        );
-
-        uint256 mintPrice = radarConcepts.mintPrice();
-        radarConcepts.mintBatch{value: mintPrice * tagTypes.length}(
-            msg.sender,
-            tagTypes
-        );
     }
 }
