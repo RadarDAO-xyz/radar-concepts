@@ -20,27 +20,16 @@ contract RadarConcepts is IERC1155, IERC1155MetadataURI, ERC165, AccessControl {
 
     error NewTagTypeNotIncremental(uint96 tagType, uint256 maxTagType);
     error TokenAlreadyMinted(
-        address user,
+        address account,
         uint96 tagType,
         uint256 priorBalance
     );
+    error NotTokenOwner();
     error InsufficientFunds();
-    error SoulboundTokenNoSetApprovalForAll(address operator, bool approved);
-    error SoulboundTokenNoIsApprovedForAll(address account, address operator);
-    error SoulboundTokenNoSafeTransferFrom(
-        address from,
-        address to,
-        uint256 id,
-        uint256 amount,
-        bytes data
-    );
-    error SoulboundTokenNoSafeBatchTransferFrom(
-        address from,
-        address to,
-        uint256[] ids,
-        uint256[] amounts,
-        bytes data
-    );
+    error SoulboundTokenNoSetApprovalForAll();
+    error SoulboundTokenNoIsApprovedForAll();
+    error SoulboundTokenNoSafeTransferFrom();
+    error SoulboundTokenNoSafeBatchTransferFrom();
     error ERC1155ReceiverNotImplemented();
     error ERC1155ReceiverRejectedTokens();
 
@@ -149,7 +138,7 @@ contract RadarConcepts is IERC1155, IERC1155MetadataURI, ERC165, AccessControl {
         pure
         override
     {
-        revert SoulboundTokenNoSetApprovalForAll(operator, approved);
+        revert SoulboundTokenNoSetApprovalForAll();
     }
 
     function isApprovedForAll(address account, address operator)
@@ -158,7 +147,7 @@ contract RadarConcepts is IERC1155, IERC1155MetadataURI, ERC165, AccessControl {
         override
         returns (bool)
     {
-        revert SoulboundTokenNoIsApprovedForAll(account, operator);
+        revert SoulboundTokenNoIsApprovedForAll();
     }
 
     function safeTransferFrom(
@@ -168,7 +157,7 @@ contract RadarConcepts is IERC1155, IERC1155MetadataURI, ERC165, AccessControl {
         uint256 amount,
         bytes calldata data
     ) public pure override {
-        revert SoulboundTokenNoSafeTransferFrom(from, to, id, amount, data);
+        revert SoulboundTokenNoSafeTransferFrom();
     }
 
     function safeBatchTransferFrom(
@@ -178,13 +167,7 @@ contract RadarConcepts is IERC1155, IERC1155MetadataURI, ERC165, AccessControl {
         uint256[] calldata amounts,
         bytes calldata data
     ) public pure override {
-        revert SoulboundTokenNoSafeBatchTransferFrom(
-            from,
-            to,
-            ids,
-            amounts,
-            data
-        );
+        revert SoulboundTokenNoSafeBatchTransferFrom();
     }
 
     function balanceOf(address account, uint256 id)
@@ -213,19 +196,19 @@ contract RadarConcepts is IERC1155, IERC1155MetadataURI, ERC165, AccessControl {
         return batchBalances;
     }
 
-    function _mint(address user, uint96 tagType)
+    function _mint(address account, uint96 tagType)
         internal
         returns (uint256 tokenId)
     {
         if (msg.value < mintPrice) revert InsufficientFunds();
 
-        tokenId = encodeTokenId(tagType, user);
+        tokenId = encodeTokenId(tagType, account);
 
-        uint256 priorBalance = balanceOf(user, tokenId);
+        uint256 priorBalance = balanceOf(account, tokenId);
         if (priorBalance > 0)
-            revert TokenAlreadyMinted(user, tagType, priorBalance); // token already owned
+            revert TokenAlreadyMinted(account, tagType, priorBalance); // token already owned
 
-        BitMaps.BitMap storage balances = _balances[user];
+        BitMaps.BitMap storage balances = _balances[account];
         BitMaps.set(balances, tagType);
 
         // ensure new tagTypes are one greater, pack bitmaps sequentially
@@ -255,31 +238,17 @@ contract RadarConcepts is IERC1155, IERC1155MetadataURI, ERC165, AccessControl {
         );
     }
 
-    function mintBatch(address to, uint96[] memory tagTypes)
-        external
-        payable
-        returns (uint256[] memory tokenIds)
-    {
-        uint256 mintCount = tagTypes.length;
-        _radarFeeForAmount(mintCount);
-        tokenIds = new uint256[](mintCount);
-        uint256[] memory amounts = new uint256[](mintCount); // used in event
+    function _burn(uint256 tokenId) internal returns (uint256) {
+        (uint96 tagType, address account) = decodeTokenId(tokenId);
+        BitMaps.BitMap storage balances = _balances[account];
+        BitMaps.unset(balances, tagType);
+        totalSupply[tagType]--;
+    }
 
-        for (uint256 i = 0; i < mintCount; i++) {
-            uint256 tokenId = _mint(to, tagTypes[i]);
-            tokenIds[i] = tokenId;
-            amounts[i] = 1;
-        }
-
-        emit TransferBatch(_msgSender(), ZERO_ADDRESS, to, tokenIds, amounts);
-        _doSafeBatchTransferAcceptanceCheck(
-            _msgSender(),
-            ZERO_ADDRESS,
-            to,
-            tokenIds,
-            amounts,
-            ""
-        );
+    function burn(uint256 tokenId) external payable {
+        if (balanceOf(msg.sender, tokenId) != 1) revert NotTokenOwner();
+        _burn(tokenId);
+        emit TransferSingle(_msgSender(), msg.sender, ZERO_ADDRESS, tokenId, 1);
     }
 
     function uri(uint256 id) external view override returns (string memory) {
@@ -313,41 +282,6 @@ contract RadarConcepts is IERC1155, IERC1155MetadataURI, ERC165, AccessControl {
                 )
             returns (bytes4 response) {
                 if (response != IERC1155Receiver.onERC1155Received.selector) {
-                    revert ERC1155ReceiverRejectedTokens();
-                }
-            } catch Error(string memory reason) {
-                revert(reason);
-            } catch {
-                revert ERC1155ReceiverNotImplemented();
-            }
-        }
-    }
-
-    /**
-     * @dev ERC1155 receiver check to ensure a "to" address can receive the ERC1155 token standard, used in batch mint
-     */
-    function _doSafeBatchTransferAcceptanceCheck(
-        address operator,
-        address from,
-        address to,
-        uint256[] memory ids,
-        uint256[] memory amounts,
-        bytes memory data
-    ) private {
-        if (to.code.length > 0) {
-            // check if contract
-            try
-                IERC1155Receiver(to).onERC1155BatchReceived(
-                    operator,
-                    from,
-                    ids,
-                    amounts,
-                    data
-                )
-            returns (bytes4 response) {
-                if (
-                    response != IERC1155Receiver.onERC1155BatchReceived.selector
-                ) {
                     revert ERC1155ReceiverRejectedTokens();
                 }
             } catch Error(string memory reason) {
