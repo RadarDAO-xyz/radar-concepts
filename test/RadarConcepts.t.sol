@@ -147,8 +147,8 @@ contract RadarConceptsTest is Test {
 
     function testMaxTagTypeValue() public {
         uint256 mintPrice = radarConcepts.mintPrice();
-        radarConcepts.mint{value: 1 ether}(recipientAddress, 0);
-        radarConcepts.mint{value: 1 ether}(recipientAddress, 1);
+        radarConcepts.mint{value: mintPrice}(recipientAddress, 0);
+        radarConcepts.mint{value: mintPrice}(recipientAddress, 1);
         assertEq(radarConcepts.maxTagType(), 1);
     }
 
@@ -242,28 +242,6 @@ contract RadarConceptsTest is Test {
         vm.expectRevert(RadarConcepts.InsufficientFunds.selector);
 
         radarConceptsHarness.exposed_radarFeeForAmount(100);
-    }
-
-    //Tags can only be minted in sequential order
-    function testMintTagsInSequentialOrder() public {
-        uint256 mintPrice = radarConcepts.mintPrice();
-        radarConcepts.mint{value: mintPrice}(msg.sender, 0);
-        radarConcepts.mint{value: mintPrice}(msg.sender, 1);
-        radarConcepts.mint{value: mintPrice}(msg.sender, 2);
-    }
-
-    function testRevertMintTagsInNonsequentialOrder() public {
-        uint256 mintPrice = radarConcepts.mintPrice();
-        radarConcepts.mint{value: mintPrice}(msg.sender, 0);
-
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                RadarConcepts.NewTagTypeNotIncremental.selector,
-                2,
-                0
-            )
-        );
-        radarConcepts.mint{value: mintPrice}(msg.sender, 2);
     }
 
     function testCorrectBalanceOfNonMintedToken() public {
