@@ -5,13 +5,10 @@ import "./RadarConcepts.sol";
 
 contract RadarConceptsHarness is RadarConcepts {
     constructor(
-        string memory _baseTokenURI,
         string memory _contractURI,
         address _owner,
         address payable _radarMintFeeAddress
-    )
-        RadarConcepts(_baseTokenURI, _contractURI, _owner, _radarMintFeeAddress)
-    {}
+    ) RadarConcepts(_contractURI, _owner, _radarMintFeeAddress) {}
 
     function exposed_radarFeeForAmount(uint256 amount)
         external

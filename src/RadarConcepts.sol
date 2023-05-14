@@ -5,7 +5,6 @@ import {ERC165} from "openzeppelin-contracts/contracts/utils/introspection/ERC16
 import {IERC165} from "openzeppelin-contracts/contracts/utils/introspection/IERC165.sol";
 import {IERC1155} from "openzeppelin-contracts/contracts/token/ERC1155/IERC1155.sol";
 import {IERC1155Receiver} from "openzeppelin-contracts/contracts/token/ERC1155/IERC1155Receiver.sol";
-import {IERC1155MetadataURI} from "openzeppelin-contracts/contracts/token/ERC1155/extensions/IERC1155MetadataURI.sol";
 import {AccessControl} from "openzeppelin-contracts/contracts/access/AccessControl.sol";
 import {Strings} from "openzeppelin-contracts/contracts/utils/Strings.sol";
 import {Context} from "openzeppelin-contracts/contracts/utils/Context.sol";
@@ -14,7 +13,7 @@ import {Base64} from "openzeppelin-contracts/contracts/utils/Base64.sol";
 import {svg} from "./SVG.sol";
 import {utils} from "./Utils.sol";
 
-contract RadarConcepts is IERC1155, IERC1155MetadataURI, ERC165, AccessControl {
+contract RadarConcepts is IERC1155, ERC165, AccessControl {
     using BitMaps for BitMaps.BitMap;
 
     ////////////////////////////
@@ -51,10 +50,6 @@ contract RadarConcepts is IERC1155, IERC1155MetadataURI, ERC165, AccessControl {
     ////////// Events //////////
     ////////////////////////////
 
-    event TokenURIUpdated(
-        string indexed previousTokenURI,
-        string indexed newTokenURI
-    );
     event ContractURIUpdated(
         string indexed previousContractURI,
         string indexed newContractURI
@@ -140,7 +135,6 @@ contract RadarConcepts is IERC1155, IERC1155MetadataURI, ERC165, AccessControl {
     {
         return
             interfaceId == type(IERC1155).interfaceId ||
-            interfaceId == type(IERC1155MetadataURI).interfaceId ||
             super.supportsInterface(interfaceId);
     }
 
@@ -287,7 +281,7 @@ contract RadarConcepts is IERC1155, IERC1155MetadataURI, ERC165, AccessControl {
         string memory mintTimestamp,
         uint256 tokenId,
         uint256 tokenNumber
-    ) external pure override returns (string memory) {
+    ) external pure returns (string memory) {
         string memory output = string.concat(
             '<svg xmlns="http://www.w3.org/2000/svg" width="500" height="500" >',
             string.concat("<style>", "body { background:#FFF; }", "</style>"),
@@ -356,7 +350,7 @@ contract RadarConcepts is IERC1155, IERC1155MetadataURI, ERC165, AccessControl {
                 )
             )
         );
-        output = string.concat("data:application/json;base64", json);
+        output = string.concat("data:application/json;base64,", json);
         return output;
     }
 
@@ -435,18 +429,6 @@ contract RadarConcepts is IERC1155, IERC1155MetadataURI, ERC165, AccessControl {
     //////////////////////////////////////
     ////////// Admin Functions ///////////
     //////////////////////////////////////
-
-    /// @notice Setter method for updating the tokenURI
-    /// @dev Only owner can update the tokenURI
-    /// @param _newTokenURI The new tokenURI
-    function setTokenURI(string memory _newTokenURI)
-        external
-        onlyRole(DEFAULT_ADMIN_ROLE)
-    {
-        string memory previousTokenURI = baseTokenURI;
-        baseTokenURI = _newTokenURI;
-        emit TokenURIUpdated(previousTokenURI, _newTokenURI);
-    }
 
     /// @notice Setter method for updating the contractURI
     /// @dev Only owner can update the contractURI
