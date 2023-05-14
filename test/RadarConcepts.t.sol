@@ -23,10 +23,6 @@ contract RadarConceptsTest is Test {
         uint256[] ids,
         uint256[] values
     );
-    event TokenURIUpdated(
-        string indexed previousTokenURI,
-        string indexed newTokenURI
-    );
     event ContractURIUpdated(
         string indexed previousContractURI,
         string indexed newContractURI
@@ -53,13 +49,11 @@ contract RadarConceptsTest is Test {
 
     function setUp() external {
         radarConcepts = new RadarConcepts(
-            "www.testtokenuri1.xyz/",
             "www.testcontracturi1.xyz/",
             0x82E286DF583C9b0d6504c56EAbA8fF47ffd59f49,
             payable(0x589e021B88F36103D3678301622b2368DBa44691)
         );
         radarConceptsHarness = new RadarConceptsHarness(
-            "www.testtokenuri1.xyz/",
             "www.testcontracturi1.xyz/",
             0x82E286DF583C9b0d6504c56EAbA8fF47ffd59f49,
             payable(0x589e021B88F36103D3678301622b2368DBa44691)
@@ -92,13 +86,6 @@ contract RadarConceptsTest is Test {
         bool result = keccak256(
             abi.encodePacked(radarConcepts.contractURI())
         ) == keccak256(abi.encodePacked("www.testcontracturi1.xyz/"));
-        assertEq(result, true);
-    }
-
-    function testInitializeBaseTokenURI() public {
-        bool result = keccak256(
-            abi.encodePacked(radarConcepts.baseTokenURI())
-        ) == keccak256(abi.encodePacked("www.testtokenuri1.xyz/"));
         assertEq(result, true);
     }
 
@@ -298,17 +285,17 @@ contract RadarConceptsTest is Test {
     }
 
     // Uri function returns the correct uri
-    function testURI() public {
-        bool result = keccak256(abi.encodePacked(radarConcepts.uri(0))) ==
-            keccak256(
-                abi.encodePacked(
-                    string.concat(
-                        radarConcepts.baseTokenURI(),
-                        Strings.toString(0)
-                    )
-                )
-            );
-        assertEq(result, true);
+    function test_uri_returnsCorrectData() public {
+        string memory uri = radarConcepts.uri(
+            "IDENTITY RND",
+            "04.25.23 21:10:18",
+            0,
+            891
+        );
+        assertEq(
+            uri,
+            "data:application/json;base64,eyJuYW1lIjogSURFTlRJVFkgUk5ELCAidG9rZW4gaWQiOiAiMCIsICJ0b2tlbiBudW1iZXIiOiAiODkxIiwgInRpbWVzdGFtcCI6ICIwNC4yNS4yMyAyMToxMDoxOCIsICJpbWFnZSI6ICJkYXRhOmltYWdlL3N2Zyt4bWw7YmFzZTY0LFBITjJaeUI0Yld4dWN6MGlhSFIwY0RvdkwzZDNkeTUzTXk1dmNtY3ZNakF3TUM5emRtY2lJSGRwWkhSb1BTSTFNREFpSUdobGFXZG9kRDBpTlRBd0lpQStQSE4wZVd4bFBtSnZaSGtnZXlCaVlXTnJaM0p2ZFc1a09pTkdSa1k3SUgwOEwzTjBlV3hsUGp4MFpYaDBJSGc5SWpJd0lpQjVQU0kxTUNJZ1ptOXVkQzF6YVhwbFBTSXlNQ0lnWm1sc2JEMGlZbXhoWTJzaUlENDhJVnREUkVGVVFWdEVTVk5EVDFaRlVpQk9SVlJYVDFKTFhWMCtQQzkwWlhoMFBqeDBaWGgwSUhnOUlqSXdJaUI1UFNJM05TSWdabTl1ZEMxemFYcGxQU0l5TUNJZ1ptbHNiRDBpWW14aFkyc2lJRDQ4SVZ0RFJFRlVRVnNuU1VSRlRsUkpWRmtnVWs1RUp5QWpPRGt4WFYwK1BDOTBaWGgwUGp4MFpYaDBJSGc5SWpJd0lpQjVQU0l4TURBaUlHWnZiblF0YzJsNlpUMGlNakFpSUdacGJHdzlJbUpzWVdOcklpQStQQ0ZiUTBSQlZFRmJNRFF1TWpVdU1qTWdNakU2TVRBNk1UaGRYVDQ4TDNSbGVIUStQSFJsZUhRZ2VEMGlOREF3SWlCNVBTSTBOelVpSUdadmJuUXRjMmw2WlQwaU1qQWlJR1pwYkd3OUltSnNZV05ySWlBK1BDRmJRMFJCVkVGYlVrRkVRVkpkWFQ0OEwzUmxlSFErUEM5emRtYysifQ=="
+        );
     }
 
     // Token id encoding works correctly
@@ -434,14 +421,6 @@ contract RadarConceptsTest is Test {
     }
 
     // Admin functions can only be performed by the contract owner
-    function testFailNonAdminSetTokenURI() public {
-        radarConcepts.setTokenURI("www.testtokenuri2.xyz/");
-    }
-
-    function testAdminSetTokenURI() public {
-        vm.prank(0x82E286DF583C9b0d6504c56EAbA8fF47ffd59f49);
-        radarConcepts.setTokenURI("www.testtokenuri2.xyz/");
-    }
 
     function testFailNonAdminSetContractURI() public {
         radarConcepts.setContractURI("www.testcontracturi2.xyz/");
@@ -498,24 +477,7 @@ contract RadarConceptsTest is Test {
         assertEq(radarConcepts.supportsInterface(erc1155InterfaceId), true);
     }
 
-    function testSupportERC1155MetadataURIInterface() public {
-        assertEq(
-            radarConcepts.supportsInterface(radarConcepts.uri.selector),
-            true
-        );
-    }
-
     //Contract events are emitted correctly
-    function testTokenURIEventEmitted() public {
-        vm.expectEmit(true, true, false, false);
-        emit TokenURIUpdated(
-            "www.testtokenuri1.xyz/",
-            "www.testtokenuri2.xyz/"
-        );
-
-        vm.prank(0x82E286DF583C9b0d6504c56EAbA8fF47ffd59f49);
-        radarConcepts.setTokenURI("www.testtokenuri2.xyz/");
-    }
 
     function testContractURIEventEmitted() public {
         vm.expectEmit(true, true, false, false);
