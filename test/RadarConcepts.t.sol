@@ -340,6 +340,7 @@ contract RadarConceptsTest is Test {
             radarConcepts.safeBatchTransferFrom.selector;
         assertEq(radarConcepts.supportsInterface(erc1155InterfaceId), true);
 
+		 }
     //Contract events are emitted correctly
 
     function test_setContractURI_contractUriEventEmitted() public {
