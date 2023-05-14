@@ -11,6 +11,8 @@ import {Strings} from "openzeppelin-contracts/contracts/utils/Strings.sol";
 import {Context} from "openzeppelin-contracts/contracts/utils/Context.sol";
 import {BitMaps} from "openzeppelin-contracts/contracts/utils/structs/BitMaps.sol";
 import {Base64} from "openzeppelin-contracts/contracts/utils/Base64.sol";
+import {svg} from "./SVG.sol";
+import {utils} from "./Utils.sol";
 
 contract RadarConcepts is IERC1155, IERC1155MetadataURI, ERC165, AccessControl {
     using BitMaps for BitMaps.BitMap;
@@ -76,19 +78,16 @@ contract RadarConcepts is IERC1155, IERC1155MetadataURI, ERC165, AccessControl {
     address payable public radarMintFeeAddress;
     uint96 public maxTagType;
     string public contractURI;
-    string public baseTokenURI;
     mapping(address => BitMaps.BitMap) private _balances;
     mapping(uint96 => uint256) public totalSupply;
     address private immutable ZERO_ADDRESS = address(0);
 
     constructor(
-        string memory _baseTokenURI,
         string memory _contractURI,
         address _owner,
         address payable _radarMintFeeAddress
     ) {
         mintPrice = 0.000777 ether;
-        baseTokenURI = _baseTokenURI;
         contractURI = _contractURI;
         radarMintFeeAddress = _radarMintFeeAddress;
 
@@ -283,28 +282,81 @@ contract RadarConcepts is IERC1155, IERC1155MetadataURI, ERC165, AccessControl {
         );
     }
 
-    function uri(uint256 id) external pure override returns (string memory) {
-        (uint96 tagType, ) = decodeTokenId(id);
-        string[2] memory parts;
-        parts[
-            0
-        ] = '<svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMinYMin meet" viewBox="0 0 350 350"><style>.base { fill: white; font-family: serif; font-size: 14px; }</style><rect width="100%" height="100%" fill="black" /><text x="10" y="20" class="base">';
-        parts[1] = "<text></text></svg>";
-        string memory output = string(abi.encodePacked(parts[0], parts[1]));
+    function uri(
+        string memory tagName,
+        string memory mintTimestamp,
+        uint256 tokenId,
+        uint256 tokenNumber
+    ) external pure override returns (string memory) {
+        string memory output = string.concat(
+            '<svg xmlns="http://www.w3.org/2000/svg" width="500" height="500" >',
+            string.concat("<style>", "body { background:#FFF; }", "</style>"),
+            svg.text(
+                string.concat(
+                    svg.prop("x", "20"),
+                    svg.prop("y", "50"),
+                    svg.prop("font-size", "20"),
+                    svg.prop("fill", "black")
+                ),
+                string.concat(svg.cdata("DISCOVER NETWORK"))
+            ),
+            svg.text(
+                string.concat(
+                    svg.prop("x", "20"),
+                    svg.prop("y", "75"),
+                    svg.prop("font-size", "20"),
+                    svg.prop("fill", "black")
+                ),
+                string.concat(
+                    svg.cdata(
+                        string.concat(
+                            "'",
+                            tagName,
+                            "' #",
+                            utils.uint2str(tokenNumber)
+                        )
+                    )
+                )
+            ),
+            svg.text(
+                string.concat(
+                    svg.prop("x", "20"),
+                    svg.prop("y", "100"),
+                    svg.prop("font-size", "20"),
+                    svg.prop("fill", "black")
+                ),
+                string.concat(svg.cdata(mintTimestamp))
+            ),
+            svg.text(
+                string.concat(
+                    svg.prop("x", "400"),
+                    svg.prop("y", "475"),
+                    svg.prop("font-size", "20"),
+                    svg.prop("fill", "black")
+                ),
+                string.concat(svg.cdata("RADAR"))
+            ),
+            "</svg>"
+        );
+
         string memory json = Base64.encode(
             bytes(
-                string(
-                    abi.encodePacked(
-                        '{"name": "Concept #',
-                        tagType,
-                        '", "description": "A RADAR concept is a...", "image": "data:image/svg+xml;base64,',
-                        Base64.encode(bytes(output)),
-                        '"}'
-                    )
+                string.concat(
+                    '{"name": ',
+                    tagName,
+                    ', "token id": "',
+                    utils.uint2str(tokenId),
+                    '", "token number": "',
+                    utils.uint2str(tokenNumber),
+                    '", "timestamp": "',
+                    mintTimestamp,
+                    '", "image": "data:image/svg+xml;base64,',
+                    Base64.encode(bytes(output)),
+                    '"}'
                 )
             )
         );
-        output = string(abi.encodePacked("data:application/json;base64", json));
+        output = string.concat("data:application/json;base64", json);
         return output;
     }
 
