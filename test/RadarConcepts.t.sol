@@ -62,7 +62,6 @@ contract RadarConceptsTest is Test {
         recipientAddress = makeAddr("recipient");
     }
 
-    // Contract initilizes correctly
     function test_constructor_setsOwner() public {
         assertEq(radarConcepts.hasRole(0x00, defaultAdminAddress), true);
     }
@@ -247,9 +246,6 @@ contract RadarConceptsTest is Test {
         assertEq(result, 1);
     }
 
-
-    // Admin functions can only be performed by the contract owner
-
     function test_RevertWhen_nonAdminSetsContractURI() public {
         bytes memory message = bytes(
             abi.encodePacked(
@@ -330,7 +326,6 @@ contract RadarConceptsTest is Test {
         assertEq(radarConcepts.radarMintFeeAddress().balance, 0.000777 ether);
     }
 
-    //Supports the proper interfaces
     function test_supportsInterface_supportERC1155Interfaces() public {
         bytes4 erc1155InterfaceId = radarConcepts.balanceOf.selector ^
             radarConcepts.balanceOfBatch.selector ^
@@ -339,9 +334,7 @@ contract RadarConceptsTest is Test {
             radarConcepts.safeTransferFrom.selector ^
             radarConcepts.safeBatchTransferFrom.selector;
         assertEq(radarConcepts.supportsInterface(erc1155InterfaceId), true);
-
-		 }
-    //Contract events are emitted correctly
+    }
 
     function test_setContractURI_contractUriEventEmitted() public {
         vm.expectEmit(true, true, false, false);
