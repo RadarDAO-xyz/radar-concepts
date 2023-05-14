@@ -5,13 +5,15 @@ import {ERC165} from "openzeppelin-contracts/contracts/utils/introspection/ERC16
 import {IERC165} from "openzeppelin-contracts/contracts/utils/introspection/IERC165.sol";
 import {IERC1155} from "openzeppelin-contracts/contracts/token/ERC1155/IERC1155.sol";
 import {IERC1155Receiver} from "openzeppelin-contracts/contracts/token/ERC1155/IERC1155Receiver.sol";
-import {IERC1155MetadataURI} from "openzeppelin-contracts/contracts/token/ERC1155/extensions/IERC1155MetadataURI.sol";
 import {AccessControl} from "openzeppelin-contracts/contracts/access/AccessControl.sol";
 import {Strings} from "openzeppelin-contracts/contracts/utils/Strings.sol";
 import {Context} from "openzeppelin-contracts/contracts/utils/Context.sol";
 import {BitMaps} from "openzeppelin-contracts/contracts/utils/structs/BitMaps.sol";
+import {Base64} from "openzeppelin-contracts/contracts/utils/Base64.sol";
+import {svg} from "./SVG.sol";
+import {utils} from "./Utils.sol";
 
-contract RadarConcepts is IERC1155, IERC1155MetadataURI, ERC165, AccessControl {
+contract RadarConcepts is IERC1155, ERC165, AccessControl {
     using BitMaps for BitMaps.BitMap;
 
     ////////////////////////////
@@ -37,10 +39,6 @@ contract RadarConcepts is IERC1155, IERC1155MetadataURI, ERC165, AccessControl {
     ////////// Events //////////
     ////////////////////////////
 
-    event TokenURIUpdated(
-        string indexed previousTokenURI,
-        string indexed newTokenURI
-    );
     event ContractURIUpdated(
         string indexed previousContractURI,
         string indexed newContractURI
@@ -64,19 +62,16 @@ contract RadarConcepts is IERC1155, IERC1155MetadataURI, ERC165, AccessControl {
     address payable public radarMintFeeAddress;
     uint96 public maxTagType;
     string public contractURI;
-    string public baseTokenURI;
     mapping(address => BitMaps.BitMap) private _balances;
     mapping(uint96 => uint256) public totalSupply;
     address private immutable ZERO_ADDRESS = address(0);
 
     constructor(
-        string memory _baseTokenURI,
         string memory _contractURI,
         address _owner,
         address payable _radarMintFeeAddress
     ) {
         mintPrice = 0.000777 ether;
-        baseTokenURI = _baseTokenURI;
         contractURI = _contractURI;
         radarMintFeeAddress = _radarMintFeeAddress;
 
@@ -129,7 +124,6 @@ contract RadarConcepts is IERC1155, IERC1155MetadataURI, ERC165, AccessControl {
     {
         return
             interfaceId == type(IERC1155).interfaceId ||
-            interfaceId == type(IERC1155MetadataURI).interfaceId ||
             super.supportsInterface(interfaceId);
     }
 
@@ -251,8 +245,82 @@ contract RadarConcepts is IERC1155, IERC1155MetadataURI, ERC165, AccessControl {
         emit TransferSingle(_msgSender(), msg.sender, ZERO_ADDRESS, tokenId, 1);
     }
 
-    function uri(uint256 id) external view override returns (string memory) {
-        return string.concat(baseTokenURI, Strings.toString(id));
+    function uri(
+        string memory tagName,
+        string memory mintTimestamp,
+        uint256 tokenId,
+        uint256 tokenNumber
+    ) external pure returns (string memory) {
+        string memory output = string.concat(
+            '<svg xmlns="http://www.w3.org/2000/svg" width="500" height="500" >',
+            string.concat("<style>", "body { background:#FFF; }", "</style>"),
+            svg.text(
+                string.concat(
+                    svg.prop("x", "20"),
+                    svg.prop("y", "50"),
+                    svg.prop("font-size", "20"),
+                    svg.prop("fill", "black")
+                ),
+                string.concat(svg.cdata("DISCOVER NETWORK"))
+            ),
+            svg.text(
+                string.concat(
+                    svg.prop("x", "20"),
+                    svg.prop("y", "75"),
+                    svg.prop("font-size", "20"),
+                    svg.prop("fill", "black")
+                ),
+                string.concat(
+                    svg.cdata(
+                        string.concat(
+                            "'",
+                            tagName,
+                            "' #",
+                            utils.uint2str(tokenNumber)
+                        )
+                    )
+                )
+            ),
+            svg.text(
+                string.concat(
+                    svg.prop("x", "20"),
+                    svg.prop("y", "100"),
+                    svg.prop("font-size", "20"),
+                    svg.prop("fill", "black")
+                ),
+                string.concat(svg.cdata(mintTimestamp))
+            ),
+            svg.text(
+                string.concat(
+                    svg.prop("x", "400"),
+                    svg.prop("y", "475"),
+                    svg.prop("font-size", "20"),
+                    svg.prop("fill", "black")
+                ),
+                string.concat(svg.cdata("RADAR"))
+            ),
+            "</svg>"
+        );
+
+        string memory json = Base64.encode(
+            bytes(
+                string.concat(
+                    '{"name": ',
+                    tagName,
+                    ', "token id": "',
+                    utils.uint2str(tokenId),
+                    '", "token number": "',
+                    utils.uint2str(tokenNumber),
+                    '", "timestamp": "',
+                    mintTimestamp,
+                    '", "image": "data:image/svg+xml;base64,',
+                    Base64.encode(bytes(output)),
+                    '"}'
+                )
+            )
+        );
+        output = string.concat("data:application/json;base64,", json);
+        return output;
     }
 
     function getContractURI() external view returns (string memory) {
@@ -295,18 +363,6 @@ contract RadarConcepts is IERC1155, IERC1155MetadataURI, ERC165, AccessControl {
     //////////////////////////////////////
     ////////// Admin Functions ///////////
     //////////////////////////////////////
-
-    /// @notice Setter method for updating the tokenURI
-    /// @dev Only owner can update the tokenURI
-    /// @param _newTokenURI The new tokenURI
-    function setTokenURI(string memory _newTokenURI)
-        external
-        onlyRole(DEFAULT_ADMIN_ROLE)
-    {
-        string memory previousTokenURI = baseTokenURI;
-        baseTokenURI = _newTokenURI;
-        emit TokenURIUpdated(previousTokenURI, _newTokenURI);
-    }
 
     /// @notice Setter method for updating the contractURI
     /// @dev Only owner can update the contractURI

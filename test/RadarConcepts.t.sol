@@ -16,10 +16,6 @@ contract RadarConceptsTest is Test {
         uint256 id,
         uint256 value
     );
-    event TokenURIUpdated(
-        string indexed previousTokenURI,
-        string indexed newTokenURI
-    );
     event ContractURIUpdated(
         string indexed previousContractURI,
         string indexed newContractURI
@@ -51,13 +47,11 @@ contract RadarConceptsTest is Test {
         defaultAdminAddress = makeAddr("admin");
         radarAddress = makeAddr("radar");
         radarConcepts = new RadarConcepts(
-            "www.testtokenuri1.xyz/",
             "www.testcontracturi1.xyz/",
             defaultAdminAddress,
             payable(radarAddress)
         );
         radarConceptsHarness = new RadarConceptsHarness(
-            "www.testtokenuri1.xyz/",
             "www.testcontracturi1.xyz/",
             defaultAdminAddress,
             payable(radarAddress)
@@ -81,13 +75,6 @@ contract RadarConceptsTest is Test {
         bool result = keccak256(
             abi.encodePacked(radarConcepts.contractURI())
         ) == keccak256(abi.encodePacked("www.testcontracturi1.xyz/"));
-        assertEq(result, true);
-    }
-
-    function test_constructor_setsBaseTokenURI() public {
-        bool result = keccak256(
-            abi.encodePacked(radarConcepts.baseTokenURI())
-        ) == keccak256(abi.encodePacked("www.testtokenuri1.xyz/"));
         assertEq(result, true);
     }
 
@@ -169,17 +156,17 @@ contract RadarConceptsTest is Test {
         radarConcepts.mint{value: mintPrice}(address(radarConceptsHarness), 0);
     }
 
-    function test_uri_returnsCorrectTokenURI() public {
-        bool result = keccak256(abi.encodePacked(radarConcepts.uri(0))) ==
-            keccak256(
-                abi.encodePacked(
-                    string.concat(
-                        radarConcepts.baseTokenURI(),
-                        Strings.toString(0)
-                    )
-                )
-            );
-        assertEq(result, true);
+    function test_uri_returnsCorrectData() public {
+        string memory uri = radarConcepts.uri(
+            "IDENTITY RND",
+            "04.25.23 21:10:18",
+            0,
+            891
+        );
+        assertEq(
+            uri,
+            "data:application/json;base64,eyJuYW1lIjogSURFTlRJVFkgUk5ELCAidG9rZW4gaWQiOiAiMCIsICJ0b2tlbiBudW1iZXIiOiAiODkxIiwgInRpbWVzdGFtcCI6ICIwNC4yNS4yMyAyMToxMDoxOCIsICJpbWFnZSI6ICJkYXRhOmltYWdlL3N2Zyt4bWw7YmFzZTY0LFBITjJaeUI0Yld4dWN6MGlhSFIwY0RvdkwzZDNkeTUzTXk1dmNtY3ZNakF3TUM5emRtY2lJSGRwWkhSb1BTSTFNREFpSUdobGFXZG9kRDBpTlRBd0lpQStQSE4wZVd4bFBtSnZaSGtnZXlCaVlXTnJaM0p2ZFc1a09pTkdSa1k3SUgwOEwzTjBlV3hsUGp4MFpYaDBJSGc5SWpJd0lpQjVQU0kxTUNJZ1ptOXVkQzF6YVhwbFBTSXlNQ0lnWm1sc2JEMGlZbXhoWTJzaUlENDhJVnREUkVGVVFWdEVTVk5EVDFaRlVpQk9SVlJYVDFKTFhWMCtQQzkwWlhoMFBqeDBaWGgwSUhnOUlqSXdJaUI1UFNJM05TSWdabTl1ZEMxemFYcGxQU0l5TUNJZ1ptbHNiRDBpWW14aFkyc2lJRDQ4SVZ0RFJFRlVRVnNuU1VSRlRsUkpWRmtnVWs1RUp5QWpPRGt4WFYwK1BDOTBaWGgwUGp4MFpYaDBJSGc5SWpJd0lpQjVQU0l4TURBaUlHWnZiblF0YzJsNlpUMGlNakFpSUdacGJHdzlJbUpzWVdOcklpQStQQ0ZiUTBSQlZFRmJNRFF1TWpVdU1qTWdNakU2TVRBNk1UaGRYVDQ4TDNSbGVIUStQSFJsZUhRZ2VEMGlOREF3SWlCNVBTSTBOelVpSUdadmJuUXRjMmw2WlQwaU1qQWlJR1pwYkd3OUltSnNZV05ySWlBK1BDRmJRMFJCVkVGYlVrRkVRVkpkWFQ0OEwzUmxlSFErUEM5emRtYysifQ=="
+        );
     }
 
     function test_encodeTokenId_returnsCorrectTokenId() public {
@@ -260,24 +247,8 @@ contract RadarConceptsTest is Test {
         assertEq(result, 1);
     }
 
-    function test_RevertsWhen_nonAdminSetsTokenURI() public {
-        bytes memory message = bytes(
-            abi.encodePacked(
-                "AccessControl: account ",
-                Strings.toHexString(radarConceptsHarness.exposed_msgSender()),
-                " is missing role ",
-                Strings.toHexString(uint256(0x00), 32)
-            )
-        );
 
-        vm.expectRevert(message);
-        radarConcepts.setTokenURI("www.testtokenuri2.xyz/");
-    }
-
-    function test_setTokenURI_defaultAdminCanCall() public {
-        vm.prank(defaultAdminAddress);
-        radarConcepts.setTokenURI("www.testtokenuri2.xyz/");
-    }
+    // Admin functions can only be performed by the contract owner
 
     function test_RevertWhen_nonAdminSetsContractURI() public {
         bytes memory message = bytes(
@@ -368,23 +339,8 @@ contract RadarConceptsTest is Test {
             radarConcepts.safeTransferFrom.selector ^
             radarConcepts.safeBatchTransferFrom.selector;
         assertEq(radarConcepts.supportsInterface(erc1155InterfaceId), true);
-        assertEq(
-            radarConcepts.supportsInterface(radarConcepts.uri.selector),
-            true
-        );
-    }
 
     //Contract events are emitted correctly
-    function test_setTokenURI_tokenUriEventEmitted() public {
-        vm.expectEmit(true, true, false, false);
-        emit TokenURIUpdated(
-            "www.testtokenuri1.xyz/",
-            "www.testtokenuri2.xyz/"
-        );
-
-        vm.prank(defaultAdminAddress);
-        radarConcepts.setTokenURI("www.testtokenuri2.xyz/");
-    }
 
     function test_setContractURI_contractUriEventEmitted() public {
         vm.expectEmit(true, true, false, false);
@@ -425,7 +381,7 @@ contract RadarConceptsTest is Test {
         radarConcepts.mint{value: 1 ether}(msg.sender, 0);
     }
 
-    function test_burn_transferSingleEventEmmited() public {
+    function test_burn_transferSingleEventEmitted() public {
         uint256 mintPrice = radarConcepts.mintPrice();
         radarConcepts.mint{value: mintPrice}(recipientAddress, 0);
         uint256 tokenId = radarConcepts.encodeTokenId(0, recipientAddress);
