@@ -253,7 +253,14 @@ contract RadarConcepts is IERC1155, ERC165, AccessControl {
     ) external pure returns (string memory) {
         string memory output = string.concat(
             '<svg xmlns="http://www.w3.org/2000/svg" width="500" height="500" >',
-            string.concat("<style>", "body { background:#FFF; }", "</style>"),
+            string.concat(
+                "<style>",
+                "@font-face {font-family: 'Microgramma Bold Extended'; src: url('https://nftstorage.link/ipfs/bafkreih3x4lg7bm7h53dh32t2qgwko5vkqow7cg24zpsnsh6ncznpa6seu');}",
+                "@font-face {font-family: 'Post Grotesk Book'; src: url('https://nftstorage.link/ipfs/bafkreibi4nehgbi5yzinkbvyfcacvhdkos57df4unjs5tuufzqacuh7fom');}",
+                "text { font-family: 'Post Grotesk Book'; }",
+                ".logo { font-family: 'Microgramma Bold Extended'; }",
+                "</style>"
+            ),
             svg.text(
                 string.concat(
                     svg.prop("x", "20"),
@@ -292,16 +299,16 @@ contract RadarConcepts is IERC1155, ERC165, AccessControl {
             ),
             svg.text(
                 string.concat(
-                    svg.prop("x", "400"),
+                    svg.prop("x", "375"),
                     svg.prop("y", "475"),
                     svg.prop("font-size", "20"),
-                    svg.prop("fill", "black")
+                    svg.prop("fill", "black"),
+                    svg.prop("class", "logo")
                 ),
                 string.concat(svg.cdata("RADAR"))
             ),
             "</svg>"
         );
-
         string memory json = Base64.encode(
             bytes(
                 string.concat(
