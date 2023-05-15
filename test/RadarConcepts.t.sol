@@ -190,17 +190,15 @@ contract RadarConceptsTest is Test {
     function test_burn_tokenOwnerCanBurnSuccessfully() public {
         uint256 mintPrice = radarConcepts.mintPrice();
         radarConcepts.mint{value: mintPrice}(recipientAddress, 0);
-        uint256 tokenId = radarConcepts.encodeTokenId(0, recipientAddress);
         vm.prank(recipientAddress);
-        radarConcepts.burn(tokenId);
+        radarConcepts.burn(recipientAddress, 0);
     }
 
     function test_RevertWhen_burningNonTokenOwner() public {
         uint256 mintPrice = radarConcepts.mintPrice();
         radarConcepts.mint{value: mintPrice}(recipientAddress, 0);
-        uint256 tokenId = radarConcepts.encodeTokenId(0, recipientAddress);
         vm.expectRevert(RadarConcepts.NotTokenOwner.selector);
-        radarConcepts.burn(tokenId);
+        radarConcepts.burn(recipientAddress, 0);
     }
 
     function test_radarFeeForAmount_calculatesRadarFeeAccurately() public {
@@ -388,6 +386,6 @@ contract RadarConceptsTest is Test {
             1
         );
         vm.prank(recipientAddress);
-        radarConcepts.burn(tokenId);
+        radarConcepts.burn(recipientAddress, 0);
     }
 }

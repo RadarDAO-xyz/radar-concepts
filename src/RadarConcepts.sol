@@ -307,7 +307,7 @@ contract RadarConcepts is IERC1155, ERC165, AccessControl {
         unchecked {
             --totalSupply[tagType];
         }
-        return tokenId;
+        return id;
     }
 
     /// @notice Burn a token from an account address
@@ -316,7 +316,7 @@ contract RadarConcepts is IERC1155, ERC165, AccessControl {
     /// @param tagType Tag type
     function burn(address account, uint96 tagType) external {
         uint256 tokenId = _burn(account, tagType);
-        emit TransferSingle(_msgSender(), msg.sender, ZERO_ADDRESS, tokenId, 1);
+        emit TransferSingle(_msgSender(), account, ZERO_ADDRESS, tokenId, 1);
     }
 
     /// @notice Get token metadata URI
