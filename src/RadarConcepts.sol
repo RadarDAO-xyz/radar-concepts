@@ -13,6 +13,9 @@ import {Base64} from "openzeppelin-contracts/contracts/utils/Base64.sol";
 import {svg} from "./SVG.sol";
 import {utils} from "./Utils.sol";
 
+///@title Radar Concepts
+///@notice Radar Concepts are non-transferable ERC1155-similar tokens that can be minted through the RADAR Discovery Network.
+//@author primordia.xyz
 contract RadarConcepts is IERC1155, ERC165, AccessControl {
     using BitMaps for BitMaps.BitMap;
 
@@ -26,6 +29,7 @@ contract RadarConcepts is IERC1155, ERC165, AccessControl {
         uint96 tagType,
         uint256 priorBalance
     );
+    error TokenNotMinted(address account, uint96 tagType, uint256 priorBalance);
     error NotTokenOwner();
     error InsufficientFunds();
     error SoulboundTokenNoSetApprovalForAll();
@@ -55,17 +59,39 @@ contract RadarConcepts is IERC1155, ERC165, AccessControl {
     event FundsWithdrawn(uint256 indexed amount);
 
     /////////////////////////////////////
-    ////////// State Variables //////////
+    ////////// Storage //////////////////
     /////////////////////////////////////
 
+    ///@notice The current price for minting tokens
     uint256 public mintPrice;
+
+    ///@notice The current address to send minting fees
     address payable public radarMintFeeAddress;
+
+    ///@notice The maximum tag type that has been minted
     uint96 public maxTagType;
+
+    //@notice The current URI of the contract
     string public contractURI;
+
+    //@notice  The current user balances
+    //@dev Token ownership is represented via bitmaps for gas efficiency since only user can own only one of each token type
     mapping(address => BitMaps.BitMap) private _balances;
+
+    ///@notice The total supply of each tag type
     mapping(uint96 => uint256) public totalSupply;
+
+    ///@notice The zero address
     address private immutable ZERO_ADDRESS = address(0);
 
+    /////////////////////////////////////
+    ////////// Constructor //////////////
+    /////////////////////////////////////
+
+    ///@notice All arguments are set initially during construction and then can be changed by the conract admin
+    ///@param _contractURI The URI of the contract
+    ///@param _owner The owner of the contract
+    ///@param _radarMintFeeAddress The address to send minting fees
     constructor(
         string memory _contractURI,
         address _owner,
@@ -82,6 +108,11 @@ contract RadarConcepts is IERC1155, ERC165, AccessControl {
     ////////// Functions ///////////
     ////////////////////////////////
 
+    /// @notice Returns a serialized token id based on a tagType and owner account address
+    /// @dev Each user can only own one of each tag type. Serializing ids based on a tagType and owner address allows us to have both shared, tagType level metadata as well as individual token data. First 12 bytes = badgeType (uint96), next 20 bytes = owner address.
+    /// @param tagType Tag type
+    /// @param account Owner account address
+    /// @return tokenId Serialized token id
     function encodeTokenId(uint96 tagType, address account)
         public
         pure
@@ -90,6 +121,10 @@ contract RadarConcepts is IERC1155, ERC165, AccessControl {
         return uint256(bytes32(abi.encodePacked(tagType, account)));
     }
 
+    /// @notice Decodes a token id into a tag type and owner account address
+    /// @param tokenId Token id
+    /// @return tagType Tag type
+    /// @return account Owner account address
     function decodeTokenId(uint256 tokenId)
         public
         pure
@@ -100,6 +135,7 @@ contract RadarConcepts is IERC1155, ERC165, AccessControl {
         return (tagType, account);
     }
 
+    /// @dev Internal shared function to calculate the fee for a given amount of tokens
     function _radarFeeForAmount(uint256 amount)
         internal
         view
@@ -113,9 +149,7 @@ contract RadarConcepts is IERC1155, ERC165, AccessControl {
         }
     }
 
-    /**
-     * @dev Verifies contract supports the standard ERC1155 interface
-     */
+    /// @dev Verifies contract supports the standard ERC1155 interface
     function supportsInterface(bytes4 interfaceId)
         public
         view
@@ -127,6 +161,7 @@ contract RadarConcepts is IERC1155, ERC165, AccessControl {
             super.supportsInterface(interfaceId);
     }
 
+    /// @notice This function will revert. Soulbound tokens cannot be transferred.
     function setApprovalForAll(address operator, bool approved)
         external
         pure
@@ -135,6 +170,7 @@ contract RadarConcepts is IERC1155, ERC165, AccessControl {
         revert SoulboundTokenNoSetApprovalForAll();
     }
 
+    /// @notice This function will revert. Soulbound tokens cannot be transferred.
     function isApprovedForAll(address account, address operator)
         external
         pure
@@ -144,6 +180,7 @@ contract RadarConcepts is IERC1155, ERC165, AccessControl {
         revert SoulboundTokenNoIsApprovedForAll();
     }
 
+    /// @notice This function will revert. Soulbound tokens cannot be transferred.
     function safeTransferFrom(
         address from,
         address to,
@@ -154,6 +191,7 @@ contract RadarConcepts is IERC1155, ERC165, AccessControl {
         revert SoulboundTokenNoSafeTransferFrom();
     }
 
+    /// @notice This function will revert. Soulbound tokens cannot be transferred.
     function safeBatchTransferFrom(
         address from,
         address to,
@@ -164,6 +202,11 @@ contract RadarConcepts is IERC1155, ERC165, AccessControl {
         revert SoulboundTokenNoSafeBatchTransferFrom();
     }
 
+    /// @notice Get token balance of account address
+    /// @dev Addresses can only own one of each tag type, this function will return either 0 or 1
+    /// @param account Account address
+    /// @param id Token id
+    /// @return balance Token balance
     function balanceOf(address account, uint256 id)
         public
         view
@@ -176,11 +219,16 @@ contract RadarConcepts is IERC1155, ERC165, AccessControl {
         return owned ? 1 : 0;
     }
 
+    /// @notice Get token balances of an array of account addresses
+    /// @dev Addresses can only own one of each tag type, this function will return an array of either 0s or 1s
+    /// @param accounts Array of account addresses
+    /// @param ids Array of token ids
+    /// @return balances Array of token balances
     function balanceOfBatch(address[] memory accounts, uint256[] memory ids)
         external
         view
         override
-        returns (uint256[] memory)
+        returns (uint256[] memory balances)
     {
         uint256 count = accounts.length;
         uint256[] memory batchBalances = new uint256[](count);
@@ -190,6 +238,7 @@ contract RadarConcepts is IERC1155, ERC165, AccessControl {
         return batchBalances;
     }
 
+    /// @dev Internal shared function to mint tokens
     function _mint(address account, uint96 tagType)
         internal
         returns (uint256 tokenId)
@@ -215,6 +264,10 @@ contract RadarConcepts is IERC1155, ERC165, AccessControl {
         return tokenId;
     }
 
+    /// @notice Mint tokens to account address
+    /// @param to Account address
+    /// @param tagType Tag type
+    /// @return tokenId Token id
     function mint(address to, uint96 tagType)
         external
         payable
@@ -232,25 +285,44 @@ contract RadarConcepts is IERC1155, ERC165, AccessControl {
         );
     }
 
-    function _burn(uint256 tokenId) internal returns (uint256) {
-        (uint96 tagType, address account) = decodeTokenId(tokenId);
+    /// @dev Internal shared function to burn tokens
+    function _burn(address account, uint96 tagType)
+        internal
+        returns (uint256 tokenId)
+    {
+        uint256 id = encodeTokenId(tagType, account);
+        uint256 priorBalance = balanceOf(account, id);
+        if (priorBalance == 0)
+            revert TokenNotMinted(account, tagType, priorBalance);
+        if (balanceOf(msg.sender, id) != 1) revert NotTokenOwner();
         BitMaps.BitMap storage balances = _balances[account];
         BitMaps.unset(balances, tagType);
         totalSupply[tagType]--;
+        return tokenId;
     }
 
-    function burn(uint256 tokenId) external payable {
-        if (balanceOf(msg.sender, tokenId) != 1) revert NotTokenOwner();
-        _burn(tokenId);
+    /// @notice Burn a token from an account address
+    /// @dev Checks if the token id has been minted and also that the provided address is the token owner
+    /// @param account Account address
+    /// @param tagType Tag type
+    function burn(address account, uint96 tagType) external {
+        uint256 tokenId = _burn(account, tagType);
         emit TransferSingle(_msgSender(), msg.sender, ZERO_ADDRESS, tokenId, 1);
     }
 
+    /// @notice Get token metadata URI
+    /// @dev Timestamp, tagName, and token number are provided by the caller temporarily until an oracle is implemented
+    /// @param tagName Tag name
+    /// @param mintTimestamp Mint timestamp
+    /// @param tokenId Token id
+    /// @param tokenNumber Token's number out of total supply
+    /// @return metadata Token metadata
     function uri(
         string memory tagName,
         string memory mintTimestamp,
         uint256 tokenId,
         uint256 tokenNumber
-    ) external pure returns (string memory) {
+    ) external pure returns (string memory metadata) {
         string memory output = string.concat(
             '<svg xmlns="http://www.w3.org/2000/svg" width="500" height="500" >',
             string.concat("<style>", "body { background:#FFF; }", "</style>"),
@@ -323,13 +395,7 @@ contract RadarConcepts is IERC1155, ERC165, AccessControl {
         return output;
     }
 
-    function getContractURI() external view returns (string memory) {
-        return contractURI;
-    }
-
-    /**
-     * @dev ERC1155 receiver check to ensure a "to" address can receive the ERC1155 token standard, used in single mint
-     */
+    /// @dev ERC1155 receiver check to ensure a "to" address can receive the ERC1155 token standard, used in single mint
     function _doSafeTransferAcceptanceCheck(
         address operator,
         address from,
@@ -400,6 +466,8 @@ contract RadarConcepts is IERC1155, ERC165, AccessControl {
         emit MintFeeAddressUpdated(previousMintFeeAddress, _newMintFeeAddress);
     }
 
+    /// @notice Withdraw all funds from the contract
+    /// @dev Only owner can withdraw
     function withdraw() external onlyRole(DEFAULT_ADMIN_ROLE) {
         (bool success, ) = radarMintFeeAddress.call{
             value: address(this).balance
