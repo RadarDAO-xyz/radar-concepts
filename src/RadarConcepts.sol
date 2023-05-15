@@ -15,7 +15,7 @@ import {utils} from "./Utils.sol";
 
 ///@title Radar Concepts
 ///@notice Radar Concepts are non-transferable ERC1155-similar tokens that can be minted through the RADAR Discovery Network.
-//@author primordia.xyz
+//@author delightfulabyss
 contract RadarConcepts is IERC1155, ERC165, AccessControl {
     using BitMaps for BitMaps.BitMap;
 
@@ -135,7 +135,7 @@ contract RadarConcepts is IERC1155, ERC165, AccessControl {
         return (tagType, account);
     }
 
-    /// @dev Internal shared function to calculate the fee for a given amount of tokens
+    /// @dev Internal function to calculate the fee for a given amount of tokens
     function _radarFeeForAmount(uint256 amount)
         internal
         view
@@ -238,7 +238,7 @@ contract RadarConcepts is IERC1155, ERC165, AccessControl {
         return batchBalances;
     }
 
-    /// @dev Internal shared function to mint tokens
+    /// @dev Internal function to mint tokens
     function _mint(address account, uint96 tagType)
         internal
         returns (uint256 tokenId)
@@ -260,7 +260,10 @@ contract RadarConcepts is IERC1155, ERC165, AccessControl {
             revert NewTagTypeNotIncremental(tagType, maxTagType);
         if (tagType == nextPossibleNewTagType) maxTagType = tagType;
 
-        totalSupply[tagType]++;
+        // Unlikely to overflow because of incrementing by 1
+        unchecked {
+            ++totalSupply[tagType];
+        }
         return tokenId;
     }
 
@@ -285,19 +288,25 @@ contract RadarConcepts is IERC1155, ERC165, AccessControl {
         );
     }
 
-    /// @dev Internal shared function to burn tokens
+    /// @dev Internal function to burn tokens
     function _burn(address account, uint96 tagType)
         internal
         returns (uint256 tokenId)
     {
         uint256 id = encodeTokenId(tagType, account);
         uint256 priorBalance = balanceOf(account, id);
+
         if (priorBalance == 0)
             revert TokenNotMinted(account, tagType, priorBalance);
         if (balanceOf(msg.sender, id) != 1) revert NotTokenOwner();
+
         BitMaps.BitMap storage balances = _balances[account];
         BitMaps.unset(balances, tagType);
-        totalSupply[tagType]--;
+
+        //Should not underflow beause of 0 balance check
+        unchecked {
+            --totalSupply[tagType];
+        }
         return tokenId;
     }
 
