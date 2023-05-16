@@ -75,7 +75,7 @@ contract RadarConcepts is IERC1155, ERC165, AccessControl {
     string public contractURI;
 
     //@notice  The current user balances
-    //@dev Token ownership is represented via bitmaps for gas efficiency since only user can own only one of each token type
+    //@dev Token ownership is represented via bitmaps for gas efficiency since users can own only one of each token type
     mapping(address => BitMaps.BitMap) private _balances;
 
     ///@notice The total supply of each tag type
