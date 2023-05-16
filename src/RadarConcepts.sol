@@ -14,7 +14,7 @@ import {svg} from "./SVG.sol";
 import {utils} from "./Utils.sol";
 
 ///@title Radar Concepts
-///@notice Radar Concepts are non-transferable ERC1155-similar tokens that can be minted through the RADAR Discovery Network.
+///@notice Radar Concepts are non-transferable ERC1155 tokens that can be minted through the RADAR Discovery Network representing people's interests.
 //@author delightfulabyss
 contract RadarConcepts is IERC1155, ERC165, AccessControl {
     using BitMaps for BitMaps.BitMap;
@@ -109,7 +109,7 @@ contract RadarConcepts is IERC1155, ERC165, AccessControl {
     ////////////////////////////////
 
     /// @notice Returns a serialized token id based on a tagType and owner account address
-    /// @dev Each user can only own one of each tag type. Serializing ids based on a tagType and owner address allows us to have both shared, tagType level metadata as well as individual token data. First 12 bytes = badgeType (uint96), next 20 bytes = owner address.
+    /// @dev Each user can only own one of each tag type. Serializing ids based on a tagType and owner address allows us to have both shared, tag-level metadata as well as individual token data. First 12 bytes = tagType (uint96), next 20 bytes = owner address.
     /// @param tagType Tag type
     /// @param account Owner account address
     /// @return tokenId Serialized token id
