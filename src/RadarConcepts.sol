@@ -14,7 +14,7 @@ import {svg} from "./SVG.sol";
 import {utils} from "./Utils.sol";
 
 ///@title Radar Concepts
-///@notice Radar Concepts are non-transferable ERC1155 tokens that can be minted through the RADAR Discovery Network representing people's interests.
+///@notice Radar Concepts are non-transferable ERC1155 tokens that can be minted through the RADAR Discovery Network. These tokens represent people's interests.
 //@author delightfulabyss
 contract RadarConcepts is IERC1155, ERC165, AccessControl {
     using BitMaps for BitMaps.BitMap;
