@@ -10,9 +10,9 @@ contract DeployScript is Script {
         vm.startBroadcast(deployerPrivateKey);
 
         RadarConcepts radarConcepts = new RadarConcepts(
-            "www.testcontracturi1.xyz/",
+            "https://nftstorage.link/ipfs/bafkreic4bb2a35dytczqhgbiudoyxbc2cqxjdwaqd47omtfboenlgwvl5y",
             0xa2eBEa8D93d403A438858d56a3146814610e407d,
-            payable(0x589e021B88F36103D3678301622b2368DBa44691)
+            payable(0x149D46eC060e75AE188876AdB6b24024637003C7)
         );
 
         vm.stopBroadcast();
